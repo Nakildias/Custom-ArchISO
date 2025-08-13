@@ -1055,16 +1055,23 @@ class InstallationProgressFrame(BaseFrame):
                 "zsh":              "The Z shell, a powerful and popular alternative to Bash."
             }
             if boot_mode == "UEFI":
-                base_pkgs.append("efibootmgr")
+                # Correctly add to the dictionary with a key and value
+                base_pkgs["efibootmgr"] = "Boot manager for UEFI systems."
+
             cpu_vendor = run_command("grep -m 1 'vendor_id' /proc/cpuinfo | awk '{print $3}'")
             microcode_package = ""
             if "GenuineIntel" in cpu_vendor:
                 microcode_package = "intel-ucode"
             elif "AuthenticAMD" in cpu_vendor:
                 microcode_package = "amd-ucode"
+            
             if microcode_package:
-                base_pkgs.append(microcode_package)
-            all_pkgs = base_pkgs + de_pkgs + optional_pkgs
+                # Correctly add the microcode package to the dictionary
+                base_pkgs[microcode_package] = "Processor microcode for CPU stability and security."
+
+            # Now, create a LIST of package names from the dictionary's keys
+            base_pkgs_list = list(base_pkgs.keys())
+            all_pkgs = base_pkgs_list + de_pkgs + optional_pkgs
             
             # OPTIMIZATION 1: Faster Mirror Setup
             self.update_progress("Setting up fast Pacman mirrors...", 5)
@@ -1252,22 +1259,6 @@ Include = /etc/pacman.d/mirrorlist
 
             # 4. Install Base System
             self.update_progress("Installing base system and packages (pacstrap)... This will take a while.", 40)
-            
-            cpu_vendor = run_command("grep -m 1 'vendor_id' /proc/cpuinfo | awk '{print $3}'")
-            microcode_package = ""
-            if "GenuineIntel" in cpu_vendor:
-                microcode_package = "intel-ucode"
-            elif "AuthenticAMD" in cpu_vendor:
-                microcode_package = "amd-ucode"
-            
-            base_pkgs = ["base", selected_kernel, "linux-firmware", "base-devel", "grub", "gptfdisk",
-                          "networkmanager", "nano", "vim", "git", "wget", "curl", "reflector", "zsh"]
-            if boot_mode == "UEFI":
-                base_pkgs.append("efibootmgr")
-            if microcode_package:
-                base_pkgs.append(microcode_package)
-
-            all_pkgs = base_pkgs + de_pkgs + optional_pkgs
             
             pacstrap_cmd = ["pacstrap", "/mnt"] + all_pkgs # Modified: Removed "-c", "/etc/pacman.d/mirrorlist"
             if not self.run_install_command(" ".join(pacstrap_cmd), "Installing base system via pacstrap"): return
