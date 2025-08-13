@@ -71,7 +71,7 @@ class ArchInstallGUI(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title(f"ArchInstall by Nakildias")
-        self.geometry("710x675")
+        self.geometry("710x625")
         self.resizable(False, False)
         self.config(bg=DRACULA_BG)
 
