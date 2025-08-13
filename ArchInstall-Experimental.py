@@ -1045,7 +1045,7 @@ class InstallationProgressFrame(BaseFrame):
             all_pkgs = base_pkgs + de_pkgs + optional_pkgs
             
             # Use -c /etc/pacman.d/mirrorlist to make pacstrap use the newly generated mirrorlist
-            pacstrap_cmd = ["pacstrap", "-K", "/mnt", "-c", "/etc/pacman.d/mirrorlist"] + all_pkgs
+            pacstrap_cmd = ["pacstrap", "/mnt", "-c", "/etc/pacman.d/mirrorlist"] + all_pkgs # Removed -K
             if not self.run_install_command(" ".join(pacstrap_cmd), "Installing base system via pacstrap"): return
             self.update_progress("Base system installed.", 60, tag="success")
 
