@@ -911,13 +911,16 @@ class InstallationProgressFrame(BaseFrame):
             # which is needed before pacstrap if multilib packages are requested.
             if install_steam or enable_multilib:
                 self.update_progress("Enabling multilib in live environment pacman.conf...", tag="info")
-                # Using a more robust sed command to ensure correct uncommenting
-                sed_cmd_multilib = (
-                    r"sed -i -E "
-                    r"'/^#\s*\[multilib\]/{h;s/^#\s*//p;g;N;s/^#\s*Include/\nInclude/p;d}' "
-                    r"/etc/pacman.conf"
-                )
-                if not self.run_install_command(sed_cmd_multilib, "Enabling multilib in live pacman.conf"): return
+                # Uncomment the [multilib] section header
+                sed_cmd_header = r"sed -i '/^#\s*\[multilib\]/s/^#\s*//' /etc/pacman.conf"
+                if not self.run_install_command(sed_cmd_header, "Uncommenting [multilib] header in live pacman.conf"): return
+                
+                # Uncomment the Include line directly following the [multilib] header
+                # This command finds the [multilib] line, then for the next line,
+                # if it starts with '# Include', it removes the '#' and leading spaces.
+                sed_cmd_include = r"sed -i '/^\[multilib\]/{n;s/^#\s*Include/Include/}' /etc/pacman.conf"
+                if not self.run_install_command(sed_cmd_include, "Uncommenting multilib Include line in live pacman.conf"): return
+                
                 if not self.run_install_command("pacman -Syy --noconfirm", "Re-synchronizing after multilib enable"): return
 
 
@@ -1181,6 +1184,8 @@ info "Configuring sudo for 'wheel' group by ensuring the line is present and unc
 # Ensure the %wheel ALL=(ALL:ALL) ALL line is present and uncommented.
 # This sed command first tries to uncomment an existing line.
 # If it doesn't exist, it appends it.
+# Note: This is applied in the chroot. If the sudoers file isn't present
+# or is heavily modified, this might need further robustness.
 if ! grep -q '^%wheel\s\+ALL=(ALL:ALL)\s\+ALL$' /etc/sudoers; then
     sed -i -E 's/^#[[:space:]]*%wheel[[:space:]]+ALL=\\(ALL(:ALL)?\\)[[:space:]]+ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers || true
     if ! grep -q '^%wheel\s\+ALL=(ALL:ALL)\s\+ALL$' /etc/sudoers; then
