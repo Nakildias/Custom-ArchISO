@@ -37,9 +37,9 @@ DRACULA_SELECTION_BG = "#44475a"
 PACKAGE_PROFILES = {
     # A minimal server profile with just a few extra utilities beyond the base install.
     "Server (No GUI)": {
+        "btop":         "Modern and feature-rich resource monitor",
         "cronie":       "Daemon for running scheduled tasks (e.g., cron jobs)",
         "fastfetch": "A fast and highly customizable tool for fetching and displaying system information with an ASCII logo.",
-        "htop":         "Interactive process viewer and system monitor",
         "ntfs-3g":      "Driver for full read/write access to Windows NTFS filesystems",
         "openssh":      "Secure Shell server for remote login and management",
         "sudo":         "Allows permitted users to execute commands as the superuser",
@@ -51,6 +51,7 @@ PACKAGE_PROFILES = {
         "alsa-utils":       "Advanced Linux Sound Architecture utilities",
         "ark":              "KDE's native archiving and compression tool",
         "bluedevil":        "KDE's integration for managing Bluetooth devices",
+        "btop":             "Modern and feature-rich resource monitor",
         "cups":             "The standard printing system for Linux",
         "discover":         "KDE's software center and application store",
         "dolphin":          "KDE's powerful and default file manager",
@@ -83,6 +84,7 @@ PACKAGE_PROFILES = {
     # The modern GNOME desktop environment.
     "GNOME": {
         "alsa-utils":       "Advanced Linux Sound Architecture utilities",
+        "btop":             "Modern and feature-rich resource monitor",
         "cups":             "The standard printing system for Linux",
         "eog":              "Eye of GNOME, the default image viewer",
         "file-roller":      "GNOME's archive manager for zip, tar, etc.",
@@ -111,6 +113,7 @@ PACKAGE_PROFILES = {
     "XFCE": {
         "alsa-utils":       "Advanced Linux Sound Architecture utilities",
         "blueman":          "A full-featured GTK-based Bluetooth manager",
+        "btop":             "Modern and feature-rich resource monitor",
         "cups":             "The standard printing system for Linux",
         "fastfetch": "A fast and highly customizable tool for fetching and displaying system information with an ASCII logo.",
         "file-roller":      "A GTK-based archive manager",
