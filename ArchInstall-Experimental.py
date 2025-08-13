@@ -11,10 +11,10 @@ import json
 import requests # Import the requests library for HTTP requests
 
 # Lastest Change Sudoer Fix and Version Check
-# Performance Optimization: Faster Mirrors and Single mkinitcpio
+# Performance Optimization: Faster Mirrors and Single mkinitcpio ~35% Faster then original.
 
 # --- Configuration & Theme ---
-SCRIPT_VERSION = "1.1"
+SCRIPT_VERSION = "1.2"
 MIN_BOOT_SIZE_MB = 512
 LATEST_VERSION_URL = "https://raw.githubusercontent.com/Nakildias/Custom-ArchISO/main/latest_version"
 
@@ -920,11 +920,11 @@ class InstallationProgressFrame(BaseFrame):
             # 2. Partition and Format
             self.update_progress("Partitioning and formatting disk...", 15)
 
+
+            #Those two lines might not be useful
             self.update_progress(f"Ensuring all partitions on {target_disk} are unmounted...", tag="info")
-            # Unmount all partitions on the target disk recursively and lazily
-            # '|| true' allows the command to fail without stopping the script
-            # if partitions are not mounted (which is often the case on first run).
             if not self.run_install_command(f"umount -R {target_disk} || true", "Unmounting existing partitions"): return
+            # END OF USELESS LINES
 
             try:
                 disk_size_bytes_str = run_command(f"lsblk -b -n -d -o SIZE {target_disk}")
