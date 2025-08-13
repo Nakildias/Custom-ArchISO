@@ -1280,7 +1280,7 @@ class InstallationProgressFrame(BaseFrame):
             
             # OPTIMIZATION 1: Faster Mirror Setup
             self.update_progress("Setting up fast Pacman mirrors...", 5)
-            if not self.run_install_command("cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup && reflector --verbose --protocol https --latest 5 --sort rate --save /etc/pacman.d/mirrorlist", "Configuring mirrors"): return
+            if not self.run_install_command("cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup && reflector --verbose --protocol https --country 'Canada' --latest 20 --sort rate --save /etc/pacman.d/mirrorlist", "Configuring mirrors"): return
             
             # PACMAN.CONF LIVE ENVIRONMENT OVERWRITE
             self.update_progress("Overwriting live environment pacman.conf to enable repositories...", tag="info")
