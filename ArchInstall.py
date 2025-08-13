@@ -904,21 +904,75 @@ class InstallationProgressFrame(BaseFrame):
             # and copy it to /etc/pacman.d/mirrorlist. This will be used by pacstrap.
             # Using --country Canada ensures relevant mirrors are selected.
             if not self.run_install_command("cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup && reflector --verbose --protocol https --country 'Canada' --latest 20 --sort rate --save /etc/pacman.d/mirrorlist", "Configuring mirrors"): return
+            
+            # --- START OF PACMAN.CONF LIVE ENVIRONMENT OVERWRITE FIX ---
+            self.update_progress("Overwriting live environment pacman.conf to enable repositories...", tag="info")
+            live_pacman_conf_content = """
+#
+# /etc/pacman.conf
+#
+# See the pacman.conf(5) manpage for option and repository directives
+
+#
+# GENERAL OPTIONS
+#
+[options]
+HoldPkg         = pacman glibc
+Architecture = auto
+
+# Misc options
+Color
+ParallelDownloads = 5
+CheckSpace
+DownloadUser = alpm
+
+SigLevel    = Required DatabaseOptional
+LocalFileSigLevel = Optional
+
+#
+# REPOSITORIES
+#
+
+[core]
+Include = /etc/pacman.d/mirrorlist
+
+[extra]
+Include = /etc/pacman.d/mirrorlist
+
+"""
+            if install_steam or enable_multilib:
+                live_pacman_conf_content += """
+[multilib]
+Include = /etc/pacman.d/mirrorlist
+
+"""
+            
+            # Write the new pacman.conf to the live environment
+            try:
+                with open("/etc/pacman.conf", "w") as f:
+                    f.write(live_pacman_conf_content)
+                self.update_progress("Successfully wrote updated pacman.conf for live environment.", tag="success")
+            except Exception as e:
+                self.update_progress(f"[ERROR] Failed to write pacman.conf for live environment: {e}", tag="error")
+                messagebox.showerror("Configuration Error", "Failed to write pacman.conf for live environment. Aborting.")
+                self.close_log_file()
+                self.controller.exit_installer()
+                return
+
+            # --- END OF PACMAN.CONF LIVE ENVIRONMENT OVERWRITE FIX ---
+
+            # Now, pacman should be able to synchronize correctly
             if not self.run_install_command("pacman -Syy --noconfirm", "Synchronizing package databases"): return
             if not self.run_install_command("pacman -Sy archlinux-keyring --noconfirm", "Updating archlinux-keyring"): return
             
-            # This block remains the same, as it enables multilib in the live environment's pacman.conf
-            # which is needed before pacstrap if multilib packages are requested.
-            if install_steam or enable_multilib:
-                self.update_progress("Enabling multilib in live environment pacman.conf...", tag="info")
-                # Using a more robust sed command to ensure correct uncommenting
-                sed_cmd_multilib = (
-                    r"sed -i -E "
-                    r"'/^#\s*\[multilib\]/{h;s/^#\s*//p;g;N;s/^#\s*Include/\nInclude/p;d}' "
-                    r"/etc/pacman.conf"
-                )
-                if not self.run_install_command(sed_cmd_multilib, "Enabling multilib in live pacman.conf"): return
-                if not self.run_install_command("pacman -Syy --noconfirm", "Re-synchronizing after multilib enable"): return
+            # This block for enabling multilib in live environment (redundant after overwrite, but kept for clarity if needed elsewhere)
+            # if install_steam or enable_multilib:
+            #     self.update_progress("Ensuring multilib is enabled in live environment pacman.conf (post-overwrite check)...", tag="info")
+            #     sed_cmd_header = r"sed -i '/^#\s*\[multilib\]/s/^#\s*//' /etc/pacman.conf"
+            #     if not self.run_install_command(sed_cmd_header, "Uncommenting [multilib] header in live pacman.conf (post-overwrite)"): return
+            #     sed_cmd_include = r"sed -i '/^\[multilib\]/{n;s/^#\s*Include/Include/}' /etc/pacman.conf"
+            #     if not self.run_install_command(sed_cmd_include, "Uncommenting multilib Include line in live pacman.conf (post-overwrite)"): return
+            #     if not self.run_install_command("pacman -Syy --noconfirm", "Re-synchronizing after multilib enable (post-overwrite)"): return
 
 
             # 2. Partition and Format
@@ -1057,6 +1111,7 @@ class InstallationProgressFrame(BaseFrame):
             if not self.run_install_command("genfstab -U /mnt >> /mnt/etc/fstab", "Generating fstab"): return
             
             # **REVISED PACMAN.CONF HANDLING**
+            # This section correctly writes the pacman.conf for the NEW system inside /mnt
             self.update_progress("Configuring pacman.conf in chroot...", tag="info")
             pacman_conf_content = """
 #
@@ -1082,15 +1137,10 @@ Architecture = auto
 Color
 ParallelDownloads = 5
 CheckSpace
-#VerbosePkgLists
 DownloadUser = alpm
-#DisableSandbox
 
-# By default, pacman accepts packages signed by keys that its local keyring
-# trusts (see pacman-key and its man page), as well as unsigned packages.
 SigLevel    = Required DatabaseOptional
 LocalFileSigLevel = Optional
-#RemoteFileSigLevel = Required
 
 # NOTE: You must run `pacman-key --init` before first using pacman; the local
 # keyring can then be populated with the keys of all official Arch Linux
@@ -1181,6 +1231,8 @@ info "Configuring sudo for 'wheel' group by ensuring the line is present and unc
 # Ensure the %wheel ALL=(ALL:ALL) ALL line is present and uncommented.
 # This sed command first tries to uncomment an existing line.
 # If it doesn't exist, it appends it.
+# Note: This is applied in the chroot. If the sudoers file isn't present
+# or is heavily modified, this might need further robustness.
 if ! grep -q '^%wheel\s\+ALL=(ALL:ALL)\s\+ALL$' /etc/sudoers; then
     sed -i -E 's/^#[[:space:]]*%wheel[[:space:]]+ALL=\\(ALL(:ALL)?\\)[[:space:]]+ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers || true
     if ! grep -q '^%wheel\s\+ALL=(ALL:ALL)\s\+ALL$' /etc/sudoers; then
