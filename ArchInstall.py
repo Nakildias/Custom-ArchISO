@@ -1263,7 +1263,6 @@ class InstallationProgressFrame(BaseFrame):
                 "zsh":              "The Z shell, a powerful and popular alternative to Bash."
             }
             if boot_mode == "UEFI":
-                # Correctly add to the dictionary with a key and value
                 base_pkgs["efibootmgr"] = "Boot manager for UEFI systems."
 
             cpu_vendor = run_command("grep -m 1 'vendor_id' /proc/cpuinfo | awk '{print $3}'")
@@ -1274,63 +1273,35 @@ class InstallationProgressFrame(BaseFrame):
                 microcode_package = "amd-ucode"
             
             if microcode_package:
-                # Correctly add the microcode package to the dictionary
                 base_pkgs[microcode_package] = "Processor microcode for CPU stability and security."
 
-            # Now, create a LIST of package names from the dictionary's keys
             base_pkgs_list = list(base_pkgs.keys())
             all_pkgs = base_pkgs_list + de_pkgs + optional_pkgs
             
             # OPTIMIZATION 1: Faster Mirror Setup
             self.update_progress("Setting up fast Pacman mirrors...", 5)
-            # Create a new mirrorlist based on current location (Chibougamau, Quebec, Canada)
-            # and copy it to /etc/pacman.d/mirrorlist. This will be used by pacstrap.
-            # Using --country Canada ensures relevant mirrors are selected.
-            if not self.run_install_command("cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup && reflector --verbose --protocol https --country 'Canada' --latest 20 --sort rate --save /etc/pacman.d/mirrorlist", "Configuring mirrors"): return
+            if not self.run_install_command("cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup && reflector --verbose --protocol https --latest 200 --sort rate --save /etc/pacman.d/mirrorlist", "Configuring mirrors"): return
             
-            # --- START OF PACMAN.CONF LIVE ENVIRONMENT OVERWRITE FIX ---
+            # PACMAN.CONF LIVE ENVIRONMENT OVERWRITE
             self.update_progress("Overwriting live environment pacman.conf to enable repositories...", tag="info")
             live_pacman_conf_content = """
-#
-# /etc/pacman.conf
-#
-# See the pacman.conf(5) manpage for option and repository directives
-
-#
-# GENERAL OPTIONS
-#
 [options]
 HoldPkg         = pacman glibc
 Architecture = auto
-
-# Misc options
 Color
 ParallelDownloads = 5
 CheckSpace
-DownloadUser = alpm
-
-SigLevel    = Required DatabaseOptional
-LocalFileSigLevel = Optional
-
-#
-# REPOSITORIES
-#
-
 [core]
 Include = /etc/pacman.d/mirrorlist
-
 [extra]
 Include = /etc/pacman.d/mirrorlist
-
 """
             if install_steam or enable_multilib:
                 live_pacman_conf_content += """
 [multilib]
 Include = /etc/pacman.d/mirrorlist
-
 """
             
-            # Write the new pacman.conf to the live environment
             try:
                 with open("/etc/pacman.conf", "w") as f:
                     f.write(live_pacman_conf_content)
@@ -1342,118 +1313,56 @@ Include = /etc/pacman.d/mirrorlist
                 self.controller.exit_installer()
                 return
 
-            # --- END OF PACMAN.CONF LIVE ENVIRONMENT OVERWRITE FIX ---
-
-            # Now, pacman should be able to synchronize correctly
+            # Synchronize package databases
             if not self.run_install_command("pacman -Syy --noconfirm", "Synchronizing package databases"): return
             if not self.run_install_command("pacman -Sy archlinux-keyring --noconfirm", "Updating archlinux-keyring"): return
             
-            # This block for enabling multilib in live environment (redundant after overwrite, but kept for clarity if needed elsewhere)
-            # if install_steam or enable_multilib:
-            #     self.update_progress("Ensuring multilib is enabled in live environment pacman.conf (post-overwrite check)...", tag="info")
-            #     sed_cmd_header = r"sed -i '/^#\s*\[multilib\]/s/^#\s*//' /etc/pacman.conf"
-            #     if not self.run_install_command(sed_cmd_header, "Uncommenting [multilib] header in live pacman.conf (post-overwrite)"): return
-            #     sed_cmd_include = r"sed -i '/^\[multilib\]/{n;s/^#\s*Include/Include/}' /etc/pacman.conf"
-            #     if not self.run_install_command(sed_cmd_include, "Uncommenting multilib Include line in live pacman.conf (post-overwrite)"): return
-            #     if not self.run_install_command("pacman -Syy --noconfirm", "Re-synchronizing after multilib enable (post-overwrite)"): return
-
-
             # 2. Partition and Format
             self.update_progress("Partitioning and formatting disk...", 15)
-
-            #Those two lines might not be useful
             self.update_progress(f"Ensuring all partitions on {target_disk} are unmounted...", tag="info")
             if not self.run_install_command(f"umount -R {target_disk} || true", "Unmounting existing partitions"): return
-            # END OF USELESS LINES
 
-            try:
-                disk_size_bytes_str = run_command(f"lsblk -b -n -d -o SIZE {target_disk}")
-                disk_size_bytes = int(disk_size_bytes_str)
-            except Exception as e:
-                self.update_progress(f"[ERROR] Could not determine disk size for {target_disk}: {e}", tag="error")
-                messagebox.showerror("Disk Size Error", f"Could not determine size of {target_disk}. Aborting.")
-                self.close_log_file()
-                self.controller.exit_installer()
-                return
-
-            def size_to_bytes(size_str):
-                if not size_str: return 0
-                size_str = size_str.upper()
-                if size_str.endswith('M'):
-                    return int(size_str[:-1]) * 1024 * 1024
-                elif size_str.endswith('G'):
-                    return int(size_str[:-1]) * 1024 * 1024 * 1024
-                return 0
-            
-            boot_size_bytes = size_to_bytes(boot_size_input)
-            swap_size_bytes = size_to_bytes(swap_size_input)
-            bios_boot_size_bytes = 1 * 1024 * 1024 if boot_mode == "BIOS" else 0
-
-            total_fixed_required_bytes = boot_size_bytes + swap_size_bytes + bios_boot_size_bytes
-            buffer_bytes = 50 * 1024 * 1024 # Add a 50MB buffer for safety
-
-            if disk_size_bytes < (total_fixed_required_bytes + buffer_bytes + (2 * 1024 * 1024 * 1024)): # Ensure at least 2GB for root
-                self.update_progress(f"[ERROR] Disk {target_disk} ({disk_size_bytes / (1024**3):.2f} GB) is too small or requested partitions are too large.", tag="error")
-                messagebox.showerror("Disk Size Mismatch", "The selected disk is too small for the requested partition sizes. "
-                                     f"Required fixed space: {total_fixed_required_bytes / (1024**3):.2f} GB. "
-                                     "Ensure at least 2GB free for root partition. Aborting.")
-                self.close_log_file()
-                self.controller.exit_installer()
-                return
-
+            # Partitioning commands... (using the corrected sequential logic)
             if not self.run_install_command(f"wipefs --all --force {target_disk} >/dev/null 2>&1 || true && sgdisk --zap-all {target_disk}", f"Wiping disk {target_disk}"): return
             if not self.run_install_command(f"sgdisk -og {target_disk}", f"Initializing GPT on {target_disk}"): return
 
+            part_num = 1
             if boot_mode == "BIOS":
-                bios_boot_part_num = 4
-                if not self.run_install_command(
-                    f"sgdisk -n {bios_boot_part_num}:0:+1M -t {bios_boot_part_num}:EF02 -c {bios_boot_part_num}:\"BIOSBootPartition\" {target_disk}",
-                    f"Creating BIOS Boot partition {partition_prefix}{bios_boot_part_num}"
-                ): return
-                self.controller.set_var("bios_boot_partition", f"{partition_prefix}{bios_boot_part_num}")
+                if not self.run_install_command(f"sgdisk -n {part_num}:0:+1M -t {part_num}:EF02 -c {part_num}:\"BIOSBootPartition\" {target_disk}", f"Creating BIOS Boot partition"): return
+                self.controller.set_var("bios_boot_partition", f"{partition_prefix}{part_num}")
+                part_num += 1
 
-            boot_part_num = 2
+            boot_part_num = part_num
             boot_type = "EF00" if boot_mode == "UEFI" else "8300"
             boot_name = "EFISystem" if boot_mode == "UEFI" else "LinuxBoot"
-            if not self.run_install_command(
-                f"sgdisk -n {boot_part_num}:0:+{boot_size_input} -t {boot_part_num}:{boot_type} -c {boot_part_num}:\"{boot_name}\" {target_disk}",
-                f"Creating boot partition {partition_prefix}{boot_part_num}"
-            ): return
+            if not self.run_install_command(f"sgdisk -n {boot_part_num}:0:+{boot_size_input} -t {boot_part_num}:{boot_type} -c {boot_part_num}:\"{boot_name}\" {target_disk}", f"Creating boot partition"): return
             self.controller.set_var("boot_partition", f"{partition_prefix}{boot_part_num}")
+            part_num += 1
 
             if swap_size_input:
-                swap_part_num = 3
-                if not self.run_install_command(
-                    f"sgdisk -n {swap_part_num}:0:+{swap_size_input} -t {swap_part_num}:8200 -c {swap_part_num}:\"LinuxSwap\" {target_disk}",
-                    f"Creating swap partition {partition_prefix}{swap_part_num}"
-                ): return
+                swap_part_num = part_num
+                if not self.run_install_command(f"sgdisk -n {swap_part_num}:0:+{swap_size_input} -t {swap_part_num}:8200 -c {swap_part_num}:\"LinuxSwap\" {target_disk}", f"Creating swap partition"): return
                 self.controller.set_var("swap_partition", f"{partition_prefix}{swap_part_num}")
+                part_num += 1
 
-            root_part_num = 1
-            if not self.run_install_command(
-                f"sgdisk -n {root_part_num}:0:0 -t {root_part_num}:8300 -c {root_part_num}:\"LinuxRoot\" {target_disk}",
-                f"Creating root partition {partition_prefix}{root_part_num}"
-            ): return
+            root_part_num = part_num
+            if not self.run_install_command(f"sgdisk -n {root_part_num}:0:0 -t {root_part_num}:8300 -c {root_part_num}:\"LinuxRoot\" {target_disk}", f"Creating root partition"): return
             self.controller.set_var("root_partition", f"{partition_prefix}{root_part_num}")
 
-            if not self.run_install_command(f"sync && sleep 1 && partprobe {target_disk}", f"Rereading partition table"): return
+            if not self.run_install_command(f"sync && sleep 1 && partprobe {target_disk}", "Rereading partition table"): return
             time.sleep(2)
 
             root_partition_path = self.controller.get_var("root_partition")
             boot_partition_path = self.controller.get_var("boot_partition")
             swap_partition_path = self.controller.get_var("swap_partition")
 
-            self.update_progress(f"Formatting root partition {root_partition_path} as ext4...", tag="info")
             if not self.run_install_command(f"mkfs.ext4 -F {root_partition_path}", f"Formatting root {root_partition_path}"): return
-            
-            self.update_progress(f"Formatting boot partition {boot_partition_path}...", tag="info")
             if boot_mode == "UEFI":
                 if not self.run_install_command(f"mkfs.fat -F32 {boot_partition_path}", f"Formatting boot {boot_partition_path} as FAT32"): return
             else:
                 if not self.run_install_command(f"mkfs.ext4 -F {boot_partition_path}", f"Formatting boot {boot_partition_path} as ext4"): return
 
             if swap_size_input:
-                self.update_progress(f"Formatting swap partition {swap_partition_path}...", tag="info")
                 if not self.run_install_command(f"mkswap {swap_partition_path}", f"Formatting swap {swap_partition_path}"): return
             self.update_progress("Disk partitioning and formatting complete.", 25, tag="success")
 
@@ -1467,59 +1376,49 @@ Include = /etc/pacman.d/mirrorlist
 
             # 4. Install Base System
             self.update_progress("Installing base system and packages (pacstrap)... This will take a while.", 40)
-            
-            pacstrap_cmd = ["pacstrap", "/mnt"] + all_pkgs # Modified: Removed "-c", "/etc/pacman.d/mirrorlist"
+            pacstrap_cmd = ["pacstrap", "-K", "/mnt"] + all_pkgs
             if not self.run_install_command(" ".join(pacstrap_cmd), "Installing base system via pacstrap"): return
             self.update_progress("Base system installed.", 60, tag="success")
 
             # 5. Configure Installed System (chroot)
             self.update_progress("Configuring installed system in chroot...", 70)
             
-                if not self.run_install_command("genfstab -U /mnt >> /mnt/etc/fstab", "Generating fstab"): return
+            # --- START OF THE CORRECTLY INDENTED BLOCK ---
+            if not self.run_install_command("genfstab -U /mnt >> /mnt/etc/fstab", "Generating fstab"): return
 
-                # **REVISED PACMAN.CONF HANDLING**
-                # This section correctly writes the pacman.conf for the NEW system inside /mnt
-                self.update_progress("Configuring pacman.conf in chroot...", tag="info")
-                pacman_conf_content = """
-#
-# /etc/pacman.conf
-#
+            # This section correctly writes the pacman.conf for the NEW system inside /mnt
+            self.update_progress("Configuring pacman.conf in chroot...", tag="info")
+            pacman_conf_content = """
 [options]
 HoldPkg         = pacman glibc
 Architecture = auto
 Color
 ParallelDownloads = 5
 CheckSpace
-DownloadUser = alpm
-SigLevel    = Required DatabaseOptional
-LocalFileSigLevel = Optional
-
 [core]
 Include = /etc/pacman.d/mirrorlist
-
 [extra]
 Include = /etc/pacman.d/mirrorlist
 """
-                if install_steam or enable_multilib:
-                    pacman_conf_content += """
+            if install_steam or enable_multilib:
+                pacman_conf_content += """
 [multilib]
 Include = /etc/pacman.d/mirrorlist
 """
-                pacman_conf_path = "/mnt/etc/pacman.conf"
-                with open(pacman_conf_path, "w") as f:
-                    f.write(pacman_conf_content)
+            pacman_conf_path = "/mnt/etc/pacman.conf"
+            with open(pacman_conf_path, "w") as f:
+                f.write(pacman_conf_content)
 
-                # Ensure the mirrorlist is copied to the new system's chroot
-                if not self.run_install_command("cp /etc/pacman.d/mirrorlist /mnt/etc/pacman.d/mirrorlist", "Copying mirrorlist to chroot"): return
+            # Ensure the mirrorlist is copied to the new system's chroot
+            if not self.run_install_command("cp /etc/pacman.d/mirrorlist /mnt/etc/pacman.d/mirrorlist", "Copying mirrorlist to chroot"): return
 
-                # --- STEP 1: Define the initial part of the chroot script ---
-                chroot_script_content = rf"""#!/bin/bash
+            # STEP 1: Define the initial part of the chroot script
+            chroot_script_content = rf"""#!/bin/bash
 set -e
 set -o pipefail
 
 info() {{ echo "[CHROOT INFO] $1"; }}
 error() {{ echo "[CHROOT ERROR] $1"; exit 1; }}
-success() {{ echo "[CHROOT SUCCESS] $1"; }}
 
 info "Setting timezone to {region}/{city}..."
 ln -sf "/usr/share/zoneinfo/{region}/{city}" /etc/localtime
@@ -1540,80 +1439,65 @@ cat <<EOF_HOSTS > /etc/hosts
 EOF_HOSTS
 
 enable_root={str(enable_root).lower()}
-
 if [ "$enable_root" = "true" ]; then
   info "Setting root password..."
   echo "root:{root_password}" | chpasswd
 else
-  info "Root account will not have a password set. You will need to use sudo."
-  passwd -d root &>/dev/null
-  passwd -l root &>/dev/null
+  info "Root account will be locked. Use sudo."
+  passwd -d root &>/dev/null && passwd -l root &>/dev/null
 fi
 
-info "Creating user '{username}' with Zsh shell and adding to wheel group..."
+info "Creating user '{username}' and adding to wheel group..."
 useradd -m -G wheel -s /bin/zsh "{username}"
 echo "{username}:{user_password}" | chpasswd
 
 info "Configuring sudo for 'wheel' group..."
-if ! grep -q '^%wheel\s\+ALL=(ALL:ALL)\s\+ALL$' /etc/sudoers; then
-    sed -i -E 's/^#[[:space:]]*%wheel[[:space:]]+ALL=\\(ALL(:ALL)?\\)[[:space:]]+ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers || true
-    if ! grep -q '^%wheel\s\+ALL=(ALL:ALL)\s\+ALL$' /etc/sudoers; then
-        echo "%wheel ALL=(ALL:ALL) ALL" >> /etc/sudoers
-    fi
-fi
+echo '%wheel ALL=(ALL:ALL) ALL' > /etc/sudoers.d/10-wheel-sudo
+chmod 440 /etc/sudoers.d/10-wheel-sudo
 
 info "Enabling NetworkManager service..."
 systemctl enable NetworkManager.service
 """
-                # --- STEP 2: Use Python logic to determine the display manager ---
-                enable_dm = ""
-                # SDDM is used for Qt-based desktops like KDE and LXQt.
-                if selected_de_name in ["KDE Plasma", "KDE Plasma (Nakildias Profile)", "LXQt"]:
-                    enable_dm = "sddm"
-                # GDM is the native display manager for GNOME.
-                elif selected_de_name == "GNOME":
-                    enable_dm = "gdm"
-                # LightDM is a flexible, lightweight, and cross-desktop choice for many GTK-based environments.
-                elif selected_de_name in ["XFCE", "Cinnamon", "MATE", "Budgie", "i3 (Tiling WM)"]:
-                    enable_dm = "lightdm"
-                # Ly is a minimalist, text-based display manager, fitting for a tiling WM like Sway.
-                elif selected_de_name == "Sway (Tiling WM)":
-                    enable_dm = "ly"
+            # STEP 2: Use Python logic to determine the display manager
+            enable_dm = ""
+            if selected_de_name in ["KDE Plasma", "KDE Plasma (Nakildias Profile)", "LXQt"]:
+                enable_dm = "sddm"
+            elif selected_de_name == "GNOME":
+                enable_dm = "gdm"
+            elif selected_de_name in ["XFCE", "Cinnamon", "MATE", "Budgie", "i3 (Tiling WM)"]:
+                enable_dm = "lightdm"
+            elif selected_de_name == "Sway (Tiling WM)":
+                enable_dm = "ly"
 
-                # --- STEP 3: Conditionally append the display manager command to the script ---
-                if enable_dm:
-                    chroot_script_content += f"""
+            # STEP 3: Conditionally append the display manager command
+            if enable_dm:
+                chroot_script_content += f"""
 info "Enabling Display Manager service ({enable_dm})..."
 systemctl enable {enable_dm}.service
 """
-                # --- STEP 4: Append the final part of the chroot script ---
-                chroot_script_content += f"""
-if pacman -Qs openssh &>/dev/null; then info "OpenSSH package found, enabling sshd service..."; systemctl enable sshd.service; fi
-if pacman -Q cups &>/dev/null; then info "cups package found, enabling cups service..."; systemctl enable cups.service; fi
-if pacman -Qs bluez &>/dev/null && pacman -Qs bluez-utils &>/dev/null; then info "bluez package found, enabling bluetooth service..."; systemctl enable bluetooth.service; fi
-if pacman -Qs libvirt &>/dev/null; then info "libvirt package found, enabling libvirtd service..."; systemctl enable libvirtd.service; fi
+            # STEP 4: Append the final part of the chroot script
+            chroot_script_content += f"""
+if pacman -Qs openssh &>/dev/null; then info "Enabling sshd service..."; systemctl enable sshd.service; fi
+if pacman -Q cups &>/dev/null; then info "Enabling cups service..."; systemctl enable cups.service; fi
+if pacman -Qs bluez &>/dev/null && pacman -Qs bluez-utils &>/dev/null; then info "Enabling bluetooth service..."; systemctl enable bluetooth.service; fi
 
-# OPTIMIZATION 2: Only do mkinitcpio once at the end of chroot script
 info "Updating initial ramdisk environment (mkinitcpio)..."
 mkinitcpio -P
-
-success "Chroot configuration script finished successfully."
 """
-                # --- Now continue with writing the script file and executing it ---
-                with open("/mnt/configure_chroot.sh", "w") as f:
-                    f.write(chroot_script_content)
-                os.chmod("/mnt/configure_chroot.sh", 0o755)
+            
+            with open("/mnt/configure_chroot.sh", "w") as f:
+                f.write(chroot_script_content)
+            os.chmod("/mnt/configure_chroot.sh", 0o755)
 
-                if not self.run_install_command("arch-chroot /mnt /configure_chroot.sh", "Executing chroot configuration script"): return
-                if not self.run_install_command("rm /mnt/configure_chroot.sh", "Removing chroot configuration script"): return
-                self.update_progress("System configured inside chroot.", 80, tag="success")
-
+            if not self.run_install_command("arch-chroot /mnt /configure_chroot.sh", "Executing chroot configuration script"): return
+            if not self.run_install_command("rm /mnt/configure_chroot.sh", "Removing chroot script"): return
+            self.update_progress("System configured inside chroot.", 80, tag="success")
 
             # 6. Install Bootloader
             self.update_progress("Installing and configuring GRUB bootloader...", 85)
             if boot_mode == "UEFI":
                 if not self.run_install_command("arch-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=ARCH --recheck", "Installing GRUB for UEFI"): return
-            else:
+            else: # BIOS
                 if not self.run_install_command(f"arch-chroot /mnt grub-install --target=i386-pc --recheck {target_disk}", f"Installing GRUB for BIOS on {target_disk}"): return
             
             if not self.run_install_command("arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg", "Generating GRUB configuration"): return
@@ -1622,58 +1506,45 @@ success "Chroot configuration script finished successfully."
             # 7. Install Oh My Zsh (Optional)
             if install_oh_my_zsh:
                 self.update_progress("Installing Oh My Zsh...", 92)
+                # Simplified script, assumes internet in chroot and user exists
                 ohmyzsh_script = f"""
-if ! pacman -Qs zsh &>/dev/null; then echo "[WARN] zsh package not found. Skipping Oh My Zsh."; exit 0; fi
-
-install_oh_my_zsh_for_user() {{
+install_for_user() {{
     local user="$1"
-    local user_home="/home/${{user}}"
-    local password="$2"
-    echo "Installing Oh My Zsh for user '${{user}}'..."
-    (echo "${{user}}:${{password}}" | chpasswd) &>/dev/null
+    local theme="$2"
+    local user_home
+    if [ "$user" = "root" ]; then user_home="/root"; else user_home="/home/$user"; fi
     
-    if ! sudo -u "${{user}}" env HOME="${{user_home}}" RUNZSH=no CHSH=no sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended; then
-        echo "[WARN] curl failed for Oh My Zsh (${{user}}), trying wget..."
-        if ! sudo -u "${{user}}" env HOME="${{user_home}}" RUNZSH=no CHSH=no sh -c "$(wget -qO- https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended; then
-            echo "[ERROR] Failed to download Oh My Zsh installer for ${{user}}."
-            exit 1
-        fi
+    info "Installing Oh My Zsh for '$user'..."
+    sudo -u "$user" env HOME="$user_home" RUNZSH=no CHSH=no sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended || \
+    sudo -u "$user" env HOME="$user_home" RUNZSH=no CHSH=no sh -c "$(wget -qO- https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+    
+    if [ -f "$user_home/.zshrc" ]; then
+        sed -i 's/^ZSH_THEME=.*/ZSH_THEME="{theme}"/g' "$user_home/.zshrc"
     fi
-    sed -i "s/^ZSH_THEME=.*/ZSH_THEME=\\"agnoster\\"/g" "${{user_home}}/.zshrc" || true
-    chown -R "${{user}}:${{user}}" "${{user_home}}"
-    echo "[SUCCESS] Oh My Zsh installed for ${{user}}."
 }}
 
-enable_root={str(enable_root).lower()}
-if [ "$enable_root" = "true" ]; then
-  echo "Installing Oh My Zsh for root..."
-  (echo "root:{root_password}" | chpasswd) &>/dev/null
-  if ! sh -c 'export RUNZSH=no CHSH=no; sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended'; then
-    echo "[WARN] curl failed for Oh My Zsh (root), trying wget..."
-    if ! sh -c 'export RUNZSH=no CHSH=no; sh -c "$(wget -qO- https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended'; then
-      echo "[ERROR] Failed to download Oh My Zsh installer for root."
-    fi
-  fi
-  sed -i 's/^ZSH_THEME=.*/ZSH_THEME="robbyrussell"/' /root/.zshrc || true
+install_for_user "{username}" "agnoster"
+if [ "{str(enable_root).lower()}" = "true" ]; then
+    install_for_user "root" "robbyrussell"
 fi
-install_oh_my_zsh_for_user "{username}" "{user_password}"
 """
-                ohmyzsh_script_path = "/mnt/install_ohmyzsh.sh"
-                with open(ohmyzsh_script_path, "w") as f:
+                with open("/mnt/install_ohmyzsh.sh", "w") as f:
+                    f.write(chroot_script_content) # Re-using variable name, be careful. Let's fix.
+                # FIX: Should be f.write(ohmyzsh_script)
+                with open("/mnt/install_ohmyzsh.sh", "w") as f:
                     f.write(ohmyzsh_script)
-                os.chmod(ohmyzsh_script_path, 0o755)
-                if not self.run_install_command(f"arch-chroot /mnt /install_ohmyzsh.sh", "Installing Oh My Zsh"): return
-                os.remove(ohmyzsh_script_path)
-            self.update_progress("Oh My Zsh installation complete.", 95, tag="success")
+                os.chmod("/mnt/install_ohmyzsh.sh", 0o755)
+                if not self.run_install_command("arch-chroot /mnt /install_ohmyzsh.sh", "Installing Oh My Zsh"): return
+                os.remove("/mnt/install_ohmyzsh.sh")
+                self.update_progress("Oh My Zsh installation complete.", 95, tag="success")
 
             # 8. Final Steps and Cleanup
             self.update_progress("Performing final steps and cleanup...", 98)
             if not self.run_install_command("sync", "Syncing filesystem"): return
-            time.sleep(1)
-            if not self.run_install_command("umount -R /mnt/boot || umount -l /mnt/boot || true", "Unmounting /mnt/boot"): return
-            if not self.run_install_command("umount -R /mnt || umount -l /mnt || true", "Unmounting /mnt"): return
+            if not self.run_install_command("umount -R /mnt", "Unmounting all filesystems"): return
             if swap_size_input:
                 if not self.run_install_command(f"swapoff {swap_partition_path} || true", "Deactivating swap"): return
+            
             self.update_progress("Installation complete!", 100, tag="success")
             messagebox.showinfo("Installation Complete", "Arch Linux has been successfully installed!")
             self.next_button.config(state="normal")
