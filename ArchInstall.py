@@ -1475,85 +1475,45 @@ Include = /etc/pacman.d/mirrorlist
             # 5. Configure Installed System (chroot)
             self.update_progress("Configuring installed system in chroot...", 70)
             
-            if not self.run_install_command("genfstab -U /mnt >> /mnt/etc/fstab", "Generating fstab"): return
-            
-            # **REVISED PACMAN.CONF HANDLING**
-            # This section correctly writes the pacman.conf for the NEW system inside /mnt
-            self.update_progress("Configuring pacman.conf in chroot...", tag="info")
-            pacman_conf_content = """
+                if not self.run_install_command("genfstab -U /mnt >> /mnt/etc/fstab", "Generating fstab"): return
+
+                # **REVISED PACMAN.CONF HANDLING**
+                # This section correctly writes the pacman.conf for the NEW system inside /mnt
+                self.update_progress("Configuring pacman.conf in chroot...", tag="info")
+                pacman_conf_content = """
 #
 # /etc/pacman.conf
-#
-# See the pacman.conf(5) manpage for option and repository directives
-
-#
-# GENERAL OPTIONS
 #
 [options]
 HoldPkg         = pacman glibc
 Architecture = auto
-
-# Pacman won't upgrade packages listed in IgnorePkg and members of IgnoreGroup
-#IgnorePkg      =
-#IgnoreGroup =
-
-# NoUpgrade     =
-# NoExtract     =
-
-# Misc options
 Color
 ParallelDownloads = 5
 CheckSpace
 DownloadUser = alpm
-
 SigLevel    = Required DatabaseOptional
 LocalFileSigLevel = Optional
-
-# NOTE: You must run `pacman-key --init` before first using pacman; the local
-# keyring can then be populated with the keys of all official Arch Linux
-# packagers with `pacman-key --populate archlinux`.
-
-#
-# REPOSITORIES
-#   - can be defined here or included from another file
-#   - pacman will search repositories in the order defined here
-#   - local/custom mirrors can be added here or in separate files
-#   - repositories listed first will take precedence when packages
-#     have identical names, regardless of version number
-#   - URLs will have $repo replaced by the name of the current repo
-#   - URLs will have $arch replaced by the name of the architecture
-#
-# Repository entries are of the format:
-#       [repo-name]
-#       Server = ServerName
-#       Include = IncludePath
-#
-# The header [repo-name] is crucial - it must be present and
-# uncommented to enable the repo.
-#
 
 [core]
 Include = /etc/pacman.d/mirrorlist
 
 [extra]
 Include = /etc/pacman.d/mirrorlist
-
 """
-            if install_steam or enable_multilib:
-                pacman_conf_content += """
+                if install_steam or enable_multilib:
+                    pacman_conf_content += """
 [multilib]
 Include = /etc/pacman.d/mirrorlist
-
 """
-            
-            pacman_conf_path = "/mnt/etc/pacman.conf"
-            with open(pacman_conf_path, "w") as f:
-                f.write(pacman_conf_content)
-            
-            # Ensure the mirrorlist is copied to the new system's chroot
-            if not self.run_install_command("cp /etc/pacman.d/mirrorlist /mnt/etc/pacman.d/mirrorlist", "Copying mirrorlist to chroot"): return
-            
-            chroot_script_content = rf"""#!/bin/bash
+                pacman_conf_path = "/mnt/etc/pacman.conf"
+                with open(pacman_conf_path, "w") as f:
+                    f.write(pacman_conf_content)
+
+                # Ensure the mirrorlist is copied to the new system's chroot
+                if not self.run_install_command("cp /etc/pacman.d/mirrorlist /mnt/etc/pacman.d/mirrorlist", "Copying mirrorlist to chroot"): return
+
+                # --- STEP 1: Define the initial part of the chroot script ---
+                chroot_script_content = rf"""#!/bin/bash
 set -e
 set -o pipefail
 
@@ -1574,9 +1534,9 @@ echo "KEYMAP={keyboard_layout}" > /etc/vconsole.conf
 info "Setting hostname to '{hostname}'..."
 echo "{hostname}" > /etc/hostname
 cat <<EOF_HOSTS > /etc/hosts
-127.0.0.1         localhost
-::1               localhost
-127.0.1.1         {hostname}.localdomain {hostname}
+127.0.0.1           localhost
+::1                 localhost
+127.0.1.1           {hostname}.localdomain {hostname}
 EOF_HOSTS
 
 enable_root={str(enable_root).lower()}
@@ -1594,12 +1554,7 @@ info "Creating user '{username}' with Zsh shell and adding to wheel group..."
 useradd -m -G wheel -s /bin/zsh "{username}"
 echo "{username}:{user_password}" | chpasswd
 
-info "Configuring sudo for 'wheel' group by ensuring the line is present and uncommented..."
-# Ensure the %wheel ALL=(ALL:ALL) ALL line is present and uncommented.
-# This sed command first tries to uncomment an existing line.
-# If it doesn't exist, it appends it.
-# Note: This is applied in the chroot. If the sudoers file isn't present
-# or is heavily modified, this might need further robustness.
+info "Configuring sudo for 'wheel' group..."
 if ! grep -q '^%wheel\s\+ALL=(ALL:ALL)\s\+ALL$' /etc/sudoers; then
     sed -i -E 's/^#[[:space:]]*%wheel[[:space:]]+ALL=\\(ALL(:ALL)?\\)[[:space:]]+ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers || true
     if ! grep -q '^%wheel\s\+ALL=(ALL:ALL)\s\+ALL$' /etc/sudoers; then
@@ -1609,7 +1564,8 @@ fi
 
 info "Enabling NetworkManager service..."
 systemctl enable NetworkManager.service
-
+"""
+                # --- STEP 2: Use Python logic to determine the display manager ---
                 enable_dm = ""
                 # SDDM is used for Qt-based desktops like KDE and LXQt.
                 if selected_de_name in ["KDE Plasma", "KDE Plasma (Nakildias Profile)", "LXQt"]:
@@ -1623,17 +1579,19 @@ systemctl enable NetworkManager.service
                 # Ly is a minimalist, text-based display manager, fitting for a tiling WM like Sway.
                 elif selected_de_name == "Sway (Tiling WM)":
                     enable_dm = "ly"
-                
+
+                # --- STEP 3: Conditionally append the display manager command to the script ---
                 if enable_dm:
                     chroot_script_content += f"""
 info "Enabling Display Manager service ({enable_dm})..."
 systemctl enable {enable_dm}.service
 """
-            chroot_script_content += f"""
+                # --- STEP 4: Append the final part of the chroot script ---
+                chroot_script_content += f"""
 if pacman -Qs openssh &>/dev/null; then info "OpenSSH package found, enabling sshd service..."; systemctl enable sshd.service; fi
 if pacman -Q cups &>/dev/null; then info "cups package found, enabling cups service..."; systemctl enable cups.service; fi
-if pacman -Q bluez &>/dev/null; then info "bluez package found, enabling bluetooth service..."; systemctl enable bluetooth.service; fi
-if pacman -Q libvirt &>/dev/null; then info "libvirt package found, enabling libvirtd service..."; systemctl enable libvirtd.service; fi
+if pacman -Qs bluez &>/dev/null && pacman -Qs bluez-utils &>/dev/null; then info "bluez package found, enabling bluetooth service..."; systemctl enable bluetooth.service; fi
+if pacman -Qs libvirt &>/dev/null; then info "libvirt package found, enabling libvirtd service..."; systemctl enable libvirtd.service; fi
 
 # OPTIMIZATION 2: Only do mkinitcpio once at the end of chroot script
 info "Updating initial ramdisk environment (mkinitcpio)..."
@@ -1641,14 +1599,15 @@ mkinitcpio -P
 
 success "Chroot configuration script finished successfully."
 """
-            
-            with open("/mnt/configure_chroot.sh", "w") as f:
-                f.write(chroot_script_content)
-            os.chmod("/mnt/configure_chroot.sh", 0o755)
+                # --- Now continue with writing the script file and executing it ---
+                with open("/mnt/configure_chroot.sh", "w") as f:
+                    f.write(chroot_script_content)
+                os.chmod("/mnt/configure_chroot.sh", 0o755)
 
-            if not self.run_install_command("arch-chroot /mnt /configure_chroot.sh", "Executing chroot configuration script"): return
-            if not self.run_install_command("rm /mnt/configure_chroot.sh", "Removing chroot configuration script"): return
-            self.update_progress("System configured inside chroot.", 80, tag="success")
+                if not self.run_install_command("arch-chroot /mnt /configure_chroot.sh", "Executing chroot configuration script"): return
+                if not self.run_install_command("rm /mnt/configure_chroot.sh", "Removing chroot configuration script"): return
+                self.update_progress("System configured inside chroot.", 80, tag="success")
+
 
             # 6. Install Bootloader
             self.update_progress("Installing and configuring GRUB bootloader...", 85)
