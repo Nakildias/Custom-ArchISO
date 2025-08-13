@@ -1611,7 +1611,7 @@ info "Enabling NetworkManager service..."
 systemctl enable NetworkManager.service
 
 """
-                enable_dm = ""
+                    enable_dm = ""
                 # SDDM is used for Qt-based desktops like KDE and LXQt.
                 if selected_de_name in ["KDE Plasma", "KDE Plasma (Nakildias Profile)", "LXQt"]:
                     enable_dm = "sddm"
