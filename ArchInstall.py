@@ -1504,10 +1504,14 @@ mkinitcpio -P
             self.update_progress("GRUB bootloader installed.", 90, tag="success")
 
             # 7. Install Oh My Zsh (Optional)
+
             if install_oh_my_zsh:
                 self.update_progress("Installing Oh My Zsh...", 92)
-                # Simplified script, assumes internet in chroot and user exists
                 ohmyzsh_script = f"""
+#!/bin/bash
+set -e
+info() {{ echo "[CHROOT INFO] $1"; }}
+
 install_for_user() {{
     local user="$1"
     local theme="$2"
@@ -1515,28 +1519,32 @@ install_for_user() {{
     if [ "$user" = "root" ]; then user_home="/root"; else user_home="/home/$user"; fi
     
     info "Installing Oh My Zsh for '$user'..."
+    # Attempt to install using curl, fall back to wget
     sudo -u "$user" env HOME="$user_home" RUNZSH=no CHSH=no sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended || \
     sudo -u "$user" env HOME="$user_home" RUNZSH=no CHSH=no sh -c "$(wget -qO- https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
     
+    # Set the Zsh theme if the .zshrc file exists
     if [ -f "$user_home/.zshrc" ]; then
-        sed -i 's/^ZSH_THEME=.*/ZSH_THEME="{theme}"/g' "$user_home/.zshrc"
+        # FIX IS HERE: Doubled curly braces to escape the f-string formatting
+        sed -i 's/^ZSH_THEME=.*/ZSH_THEME="{{theme}}"/g' "$user_home/.zshrc"
     fi
 }}
 
+# Install for the created user
 install_for_user "{username}" "agnoster"
+
+# Install for root if enabled
 if [ "{str(enable_root).lower()}" = "true" ]; then
     install_for_user "root" "robbyrussell"
 fi
 """
                 with open("/mnt/install_ohmyzsh.sh", "w") as f:
-                    f.write(chroot_script_content) # Re-using variable name, be careful. Let's fix.
-                # FIX: Should be f.write(ohmyzsh_script)
-                with open("/mnt/install_ohmyzsh.sh", "w") as f:
                     f.write(ohmyzsh_script)
                 os.chmod("/mnt/install_ohmyzsh.sh", 0o755)
                 if not self.run_install_command("arch-chroot /mnt /install_ohmyzsh.sh", "Installing Oh My Zsh"): return
-                os.remove("/mnt/install_ohmyzsh.sh")
+                if not self.run_install_command("rm /mnt/install_ohmyzsh.sh", "Removing Oh My Zsh install script"): return
                 self.update_progress("Oh My Zsh installation complete.", 95, tag="success")
+
 
             # 8. Final Steps and Cleanup
             self.update_progress("Performing final steps and cleanup...", 98)
