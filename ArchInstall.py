@@ -35,15 +35,169 @@ DRACULA_SELECTION_BG = "#44475a"
 
 # Pre-defined package profiles
 PACKAGE_PROFILES = {
-    "Server (No GUI)": ["openssh"],
-    "KDE Plasma": ["plasma-desktop", "sddm", "konsole", "pipewire-alsa", "pipewire-pulse", "alsa-utils", "dolphin", "ark", "spectacle", "kate", "flatpak", "discover", "firefox", "plasma-nm", "gwenview", "kcalc", "kscreen", "partitionmanager", "p7zip", "plasma-pa", "sddm-kcm", "openssh"],
-    "GNOME": ["gnome", "gdm", "gnome-terminal", "pipewire-alsa", "pipewire-pulse", "alsa-utils", "nautilus", "gnome-text-editor", "gnome-control-center", "gnome-software", "eog", "file-roller", "flatpak", "firefox", "gnome-tweaks", "openssh"],
-    "XFCE": ["xfce4", "xfce4-goodies", "lightdm", "lightdm-gtk-greeter", "xfce4-terminal", "pipewire-alsa", "pipewire-pulse", "alsa-utils", "gvfs", "gvfs-smb", "thunar", "mousepad", "ristretto", "file-roller", "flatpak", "firefox", "network-manager-applet", "openssh"],
-    "LXQt": ["lxqt", "sddm", "qterminal", "pipewire-alsa", "pipewire-pulse", "alsa-utils", "pcmanfm-qt", "featherpad", "lximage-qt", "ark", "flatpak", "firefox", "network-manager-applet", "openssh"],
-    "MATE": ["mate", "mate-extra", "lightdm", "lightdm-gtk-greeter", "mate-terminal", "pipewire-alsa", "pipewire-pulse", "alsa-utils", "caja", "pluma", "eom", "engrampa", "flatpak", "firefox", "network-manager-applet", "openssh"],
-    "KDE Plasma (NVIDIA, Nakildias Profile)": ["plasma-desktop", "sddm", "konsole", "pipewire-alsa", "pipewire-pulse", "alsa-utils", "dolphin", "ark", "spectacle", "kate", "flatpak", "discover", "firefox", "plasma-nm", "gwenview", "kcalc", "kscreen", "partitionmanager", "p7zip", "nvidia", "plasma-pa", "bluedevil", "obs-studio", "spotify-launcher", "sddm-kcm", "kdenlive", "kdeconnect", "kwalletmanager", "kfind", "isoimagewriter", "kmail", "calindori", "plasma-browser-integration", "ntfs-3g", "cups", "system-config-printer", "print-manager", "krdp", "deluge-gtk", "thefuck", "git-lfs", "virt-manager", "openssh", "nmap", "traceroute", "qemu-desktop", "dnsmasq", "krdc"]
-}
+    # A minimal server profile with just a few extra utilities beyond the base install.
+    "Server (No GUI)": {
+        "cronie":       "Daemon for running scheduled tasks (e.g., cron jobs)",
+        "fastfetch": "A fast and highly customizable tool for fetching and displaying system information with an ASCII logo.",
+        "htop":         "Interactive process viewer and system monitor",
+        "ntfs-3g":      "Driver for full read/write access to Windows NTFS filesystems",
+        "openssh":      "Secure Shell server for remote login and management",
+        "sudo":         "Allows permitted users to execute commands as the superuser",
+        "ufw":          "Uncomplicated Firewall, a user-friendly firewall manager"
+    },
 
+    # A full-featured KDE Plasma desktop.
+    "KDE Plasma": {
+        "alsa-utils":       "Advanced Linux Sound Architecture utilities",
+        "ark":              "KDE's native archiving and compression tool",
+        "bluedevil":        "KDE's integration for managing Bluetooth devices",
+        "cups":             "The standard printing system for Linux",
+        "discover":         "KDE's software center and application store",
+        "dolphin":          "KDE's powerful and default file manager",
+        "fastfetch": "A fast and highly customizable tool for fetching and displaying system information with an ASCII logo.",
+        "ffmpegthumbs":     "Generates video file thumbnails for file managers like Dolphin",
+        "firefox":          "Popular open-source web browser",
+        "flatpak":          "System for sandboxed desktop applications",
+        "gwenview":         "KDE's default image and video viewer",
+        "kate":             "KDE's advanced and feature-rich text editor",
+        "kcalc":            "KDE's scientific calculator",
+        "kdeconnect":       "Integrates your phone and computer",
+        "konsole":          "KDE's default terminal emulator",
+        "kscreen":          "KDE's display management utility",
+        "noto-fonts":       "Google's universal font family",
+        "openssh":          "Secure Shell client/server for remote access",
+        "partitionmanager": "KDE's utility for managing disk partitions",
+        "p7zip":            "Command-line tool for 7z and other archive formats",
+        "pipewire-alsa":    "PipeWire compatibility layer for ALSA applications",
+        "pipewire-pulse":   "PipeWire compatibility layer for PulseAudio applications",
+        "plasma-desktop":   "The core KDE Plasma desktop environment",
+        "plasma-nm":        "KDE's network manager applet for the system tray",
+        "plasma-pa":        "KDE's audio volume applet for the system tray",
+        "plasma-systemmonitor": "Modern system resource monitor for KDE",
+        "print-manager":    "A tool for managing print jobs",
+        "sddm":             "Simple Desktop Display Manager, a modern login screen",
+        "sddm-kcm":         "KDE Configuration Module for SDDM",
+        "spectacle":        "KDE's powerful screenshot utility"
+    },
+
+    # The modern GNOME desktop environment.
+    "GNOME": {
+        "alsa-utils":       "Advanced Linux Sound Architecture utilities",
+        "cups":             "The standard printing system for Linux",
+        "eog":              "Eye of GNOME, the default image viewer",
+        "file-roller":      "GNOME's archive manager for zip, tar, etc.",
+        "fastfetch": "A fast and highly customizable tool for fetching and displaying system information with an ASCII logo.",
+        "firefox":          "Popular open-source web browser",
+        "flatpak":          "System for sandboxed desktop applications",
+        "gdm":              "GNOME Display Manager, the default login screen",
+        "gnome":            "The GNOME desktop metapackage",
+        "gnome-bluetooth-3.0": "Bluetooth integration for the GNOME desktop",
+        "gnome-control-center": "The main settings panel for GNOME",
+        "gnome-disk-utility": "A tool for managing disk drives and media",
+        "gnome-software":   "GNOME's software center",
+        "gnome-system-monitor": "A utility to monitor system processes and resources",
+        "gnome-terminal":   "The default terminal emulator for GNOME",
+        "gnome-text-editor": "GNOME's new, simple default text editor",
+        "gnome-tweaks":     "A tool for advanced GNOME configuration options",
+        "nautilus":         "GNOME's default file manager",
+        "noto-fonts":       "Google's universal font family",
+        "openssh":          "Secure Shell client/server for remote access",
+        "pipewire-alsa":    "PipeWire compatibility layer for ALSA applications",
+        "pipewire-pulse":   "PipeWire compatibility layer for PulseAudio applications",
+        "system-config-printer": "A graphical utility for printer configuration"
+    },
+
+    # The lightweight and classic XFCE desktop.
+    "XFCE": {
+        "alsa-utils":       "Advanced Linux Sound Architecture utilities",
+        "blueman":          "A full-featured GTK-based Bluetooth manager",
+        "cups":             "The standard printing system for Linux",
+        "fastfetch": "A fast and highly customizable tool for fetching and displaying system information with an ASCII logo.",
+        "file-roller":      "A GTK-based archive manager",
+        "firefox":          "Popular open-source web browser",
+        "flatpak":          "System for sandboxed desktop applications",
+        "gnome-disk-utility": "A solid GTK-based disk management tool",
+        "gufw":             "Graphical User interface for the Uncomplicated Firewall",
+        "gvfs":             "Virtual filesystem for accessing network resources",
+        "gvfs-smb":         "GVFS backend for Windows/Samba network shares",
+        "lightdm":          "Lightweight and cross-desktop display manager",
+        "lightdm-gtk-greeter": "GTK-based login screen theme for LightDM",
+        "mousepad":         "XFCE's simple and fast default text editor",
+        "network-manager-applet": "System tray applet for managing network connections",
+        "noto-fonts":       "Google's universal font family",
+        "openssh":          "Secure Shell client/server for remote access",
+        "pavucontrol":      "PulseAudio Volume Control, a detailed audio mixer",
+        "pipewire-alsa":    "PipeWire compatibility layer for ALSA applications",
+        "pipewire-pulse":   "PipeWire compatibility layer for PulseAudio applications",
+        "ristretto":        "XFCE's default image viewer",
+        "system-config-printer": "A graphical utility for printer configuration",
+        "thunar":           "XFCE's default file manager",
+        "xfce4":            "The core XFCE desktop metapackage",
+        "xfce4-goodies":    "A collection of useful plugins and utilities for XFCE",
+        "xfce4-terminal":   "XFCE's default terminal emulator"
+    },
+    
+    # A power-user KDE Plasma profile with development and creative tools.
+    "KDE Plasma (Nakildias Profile)": {
+        "alsa-utils":       "Advanced Linux Sound Architecture utilities",
+        "ark":              "KDE's native archiving tool",
+        "bluedevil":        "KDE's Bluetooth integration stack",
+        "btop":             "Modern and feature-rich resource monitor",
+        "calindori":        "KDE's calendar application",
+        "code":             "Visual Studio Code, a popular source-code editor",
+        "cups":             "The standard printing system for Linux",
+        "deluge-gtk":       "A popular, lightweight BitTorrent client",
+        "discover":         "KDE's software center",
+        "dnsmasq":          "Lightweight DNS forwarder and DHCP server (for virt-manager)",
+        "dolphin":          "KDE's powerful and default file manager",
+        "fastfetch": "A fast and highly customizable tool for fetching and displaying system information with an ASCII logo.",
+        "ffmpegthumbs":     "Generates video file thumbnails for file managers like Dolphin",
+        "firefox":          "Popular open-source web browser",
+        "flatpak":          "System for sandboxed desktop applications",
+        "git-lfs":          "Git extension for versioning large files",
+        "gimp":             "GNU Image Manipulation Program, an advanced image editor",
+        "gwenview":         "KDE's default image and video viewer",
+        "isoimagewriter":   "KDE's tool for writing bootable ISOs to USB drives",
+        "kate":             "KDE's advanced text editor",
+        "kcalc":            "KDE's scientific calculator",
+        "kdeconnect":       "Integrates your phone and computer",
+        "kdenlive":         "KDE's powerful non-linear video editor",
+        "kfind":            "KDE's dedicated file search utility",
+        "kmail":            "KDE's email client",
+        "konsole":          "KDE's default terminal emulator",
+        "krdc":             "KDE's remote desktop client (RDP/VNC)",
+        "krdp":             "Remote desktop server support for KDE",
+        "kscreen":          "KDE's display management utility",
+        "kwalletmanager":   "KDE's password management tool",
+        "nmap":             "Powerful network scanning and security auditing tool",
+        "ntfs-3g":          "Driver for read/write access to Windows NTFS filesystems",
+        "obs-studio":       "Software for video recording and live streaming",
+        "openssh":          "Secure Shell client/server for remote access",
+        "partitionmanager": "KDE's utility for managing disk partitions",
+        "p7zip":            "Command-line tool for 7z and other archive formats",
+        "pipewire-alsa":    "PipeWire compatibility layer for ALSA applications",
+        "pipewire-pulse":   "PipeWire compatibility layer for PulseAudio applications",
+        "plasma-browser-integration": "Adds browser media controls to the Plasma desktop",
+        "plasma-desktop":   "The core KDE Plasma desktop environment",
+        "plasma-nm":        "KDE's network manager applet",
+        "plasma-pa":        "KDE's audio volume applet",
+        "plasma-systemmonitor": "Modern system resource monitor for KDE",
+        "podman":           "A daemonless container engine for OCI containers",
+        "print-manager":    "A tool for managing print jobs",
+        "qemu-desktop":     "A machine emulator and virtualizer (desktop parts)",
+        "sddm":             "Simple Desktop Display Manager, a modern login screen",
+        "sddm-kcm":         "KDE Configuration Module for SDDM",
+        "spectacle":        "KDE's powerful screenshot utility",
+        "spotify-launcher": "A simple launcher for the Spotify client",
+        "syncthing":        "A decentralized file synchronization program",
+        "system-config-printer": "A graphical utility for printer configuration",
+        "thefuck":          "Corrects typos in your previous console command",
+        "timeshift":        "A system restore utility that takes filesystem snapshots",
+        "traceroute":       "A utility to trace the network path to a host",
+        "virt-manager":     "A graphical interface for managing virtual machines",
+        "vlc":              "A highly versatile multimedia player"
+    }
+}
 # --- Helper Functions ---
 def run_command(command, shell=True, check=True, capture_output=True, text=True):
     """
@@ -884,8 +1038,22 @@ class InstallationProgressFrame(BaseFrame):
             optional_pkgs = []
             if install_steam: optional_pkgs.append("steam")
             if install_discord: optional_pkgs.append("discord")
-            base_pkgs = ["base", selected_kernel, "linux-firmware", "base-devel", "grub", "gptfdisk",
-                          "networkmanager", "nano", "vim", "git", "wget", "curl", "reflector", "zsh"]
+            base_pkgs = {
+                "base":             "A metapackage with the bare minimum for a functional system.",
+                selected_kernel:    "The Linux kernel, the core of the operating system.",
+                "linux-firmware":   "Firmware files required by many hardware drivers.",
+                "base-devel":       "Essential tools for building/compiling software (e.g., gcc, make).",
+                "grub":             "The GRand Unified Bootloader, for loading the operating system.",
+                "gptfdisk":         "Tools for managing GUID Partition Table (GPT) disks.",
+                "networkmanager":   "A service that automatically manages network connections.",
+                "nano":             "A simple, user-friendly command-line text editor.",
+                "vim":              "A highly configurable and powerful command-line text editor.",
+                "git":              "A distributed version control system for tracking code.",
+                "wget":             "A non-interactive network downloader for fetching files.",
+                "curl":             "A versatile command-line tool for transferring data with URLs.",
+                "reflector":        "A script to retrieve and sort the fastest repository mirrors.",
+                "zsh":              "The Z shell, a powerful and popular alternative to Bash."
+            }
             if boot_mode == "UEFI":
                 base_pkgs.append("efibootmgr")
             cpu_vendor = run_command("grep -m 1 'vendor_id' /proc/cpuinfo | awk '{print $3}'")
