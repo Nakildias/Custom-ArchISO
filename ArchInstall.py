@@ -82,7 +82,7 @@ PACKAGE_PROFILES = {
         "plasma-pa":        "KDE's audio volume applet for the system tray",
         "plasma-systemmonitor": "Modern system resource monitor for KDE",
         "print-manager":    "A tool for managing print jobs",
-        "sddm":             "Simple Desktop Display Manager, a modern login screen",
+        "sddm":             "Simple Desktop Display Manager, a modern login screen for Qt desktops",
         "sddm-kcm":         "KDE Configuration Module for SDDM",
         "spectacle":        "KDE's powerful screenshot utility",
         "timeshift":        "System restore utility that takes filesystem snapshots",
@@ -157,7 +157,194 @@ PACKAGE_PROFILES = {
         "xfce4-goodies":    "A collection of useful plugins and utilities for XFCE",
         "xfce4-terminal":   "XFCE's default terminal emulator"
     },
+    
+    # The traditional and modern Cinnamon desktop.
+    "Cinnamon": {
+        "alsa-utils":       "Advanced Linux Sound Architecture utilities",
+        "blueman":          "A full-featured GTK-based Bluetooth manager",
+        "btop":             "Modern and feature-rich resource monitor",
+        "cinnamon":         "The Cinnamon desktop environment",
+        "cups":             "The standard printing system for Linux",
+        "fastfetch":        "A fast and highly customizable tool for fetching and displaying system information with an ASCII logo.",
+        "file-roller":      "A GTK-based archive manager for Cinnamon",
+        "firefox":          "Popular open-source web browser",
+        "flatpak":          "System for sandboxed desktop applications",
+        "gimp":             "GNU Image Manipulation Program, a powerful photo editor",
+        "gnome-disk-utility": "A solid GTK-based disk management tool",
+        "gnome-terminal":   "A powerful and feature-rich terminal emulator",
+        "gufw":             "Graphical User interface for the Uncomplicated Firewall",
+        "libreoffice-fresh":"A powerful and free office suite",
+        "lightdm":          "Lightweight and cross-desktop display manager",
+        "lightdm-gtk-greeter": "GTK-based login screen theme for LightDM",
+        "nemo":             "The default file manager for the Cinnamon desktop",
+        "network-manager-applet": "System tray applet for managing network connections",
+        "noto-fonts":       "Google's universal font family for excellent compatibility",
+        "openssh":          "Secure Shell client/server for remote access",
+        "pavucontrol":      "PulseAudio Volume Control, a detailed audio mixer",
+        "pipewire-alsa":    "PipeWire compatibility layer for ALSA applications",
+        "pipewire-pulse":   "PipeWire compatibility layer for PulseAudio applications",
+        "system-config-printer": "A graphical utility for printer configuration",
+        "timeshift":        "System restore utility (developed by Linux Mint team)",
+        "vlc":              "A highly versatile multimedia player",
+        "xed":              "The default, simple text editor from Linux Mint",
+        "xreader":          "The default document (PDF) viewer from Linux Mint",
+        "xviewer":          "The default image viewer from Linux Mint"
+    },
 
+    # The classic and lightweight MATE desktop.
+    "MATE": {
+        "alsa-utils":       "Advanced Linux Sound Architecture utilities",
+        "atril":            "The default document (PDF) viewer for MATE",
+        "blueman":          "A full-featured GTK-based Bluetooth manager",
+        "btop":             "Modern and feature-rich resource monitor",
+        "caja":             "The default file manager for the MATE desktop",
+        "cups":             "The standard printing system for Linux",
+        "engrampa":         "The default archive manager for MATE",
+        "eom":              "Eye of MATE, the default image viewer",
+        "fastfetch":        "A fast and highly customizable tool for fetching and displaying system information with an ASCII logo.",
+        "firefox":          "Popular open-source web browser",
+        "flatpak":          "System for sandboxed desktop applications",
+        "gimp":             "GNU Image Manipulation Program, a powerful photo editor",
+        "gnome-disk-utility": "A solid GTK-based disk management tool",
+        "gufw":             "Graphical User interface for the Uncomplicated Firewall",
+        "libreoffice-fresh":"A powerful and free office suite",
+        "lightdm":          "Lightweight and cross-desktop display manager",
+        "lightdm-gtk-greeter": "GTK-based login screen theme for LightDM",
+        "mate-desktop":     "The core MATE desktop environment",
+        "mate-terminal":    "The default terminal emulator for MATE",
+        "mate-tweak":       "A utility for advanced customization of the MATE desktop",
+        "network-manager-applet": "System tray applet for managing network connections",
+        "noto-fonts":       "Google's universal font family for excellent compatibility",
+        "openssh":          "Secure Shell client/server for remote access",
+        "pavucontrol":      "PulseAudio Volume Control, a detailed audio mixer",
+        "pipewire-alsa":    "PipeWire compatibility layer for ALSA applications",
+        "pipewire-pulse":   "PipeWire compatibility layer for PulseAudio applications",
+        "pluma":            "The default text editor for MATE",
+        "system-config-printer": "A graphical utility for printer configuration",
+        "timeshift":        "System restore utility that takes filesystem snapshots",
+        "vlc":              "A highly versatile multimedia player"
+    },
+
+    # The modern and elegant Budgie desktop.
+    "Budgie": {
+        "alsa-utils":       "Advanced Linux Sound Architecture utilities",
+        "blueman":          "A full-featured GTK-based Bluetooth manager",
+        "btop":             "Modern and feature-rich resource monitor",
+        "budgie-desktop":   "The Budgie desktop environment",
+        "cups":             "The standard printing system for Linux",
+        "fastfetch":        "A fast and highly customizable tool for fetching and displaying system information with an ASCII logo.",
+        "file-roller":      "A standard GTK archive manager",
+        "firefox":          "Popular open-source web browser",
+        "flatpak":          "System for sandboxed desktop applications",
+        "gimp":             "GNU Image Manipulation Program, a powerful photo editor",
+        "gnome-disk-utility": "A solid GTK-based disk management tool",
+        "gnome-text-editor":"A modern, simple text editor from the GNOME project",
+        "gufw":             "Graphical User interface for the Uncomplicated Firewall",
+        "libreoffice-fresh":"A powerful and free office suite",
+        "lightdm":          "Lightweight and cross-desktop display manager",
+        "lightdm-gtk-greeter": "GTK-based login screen theme for LightDM",
+        "nemo":             "The powerful Nemo file manager (popular choice for Budgie)",
+        "network-manager-applet": "System tray applet for managing network connections",
+        "noto-fonts":       "Google's universal font family for excellent compatibility",
+        "openssh":          "Secure Shell client/server for remote access",
+        "pavucontrol":      "PulseAudio Volume Control, a detailed audio mixer",
+        "pipewire-alsa":    "PipeWire compatibility layer for ALSA applications",
+        "pipewire-pulse":   "PipeWire compatibility layer for PulseAudio applications",
+        "system-config-printer": "A graphical utility for printer configuration",
+        "timeshift":        "System restore utility that takes filesystem snapshots",
+        "vlc":              "A highly versatile multimedia player"
+    },
+
+    # The fast and lightweight LXQt desktop.
+    "LXQt": {
+        "alsa-utils":       "Advanced Linux Sound Architecture utilities",
+        "ark":              "A powerful Qt-based archive manager from the KDE project",
+        "blueman":          "A full-featured GTK-based Bluetooth manager (functional choice for LXQt)",
+        "btop":             "Modern and feature-rich resource monitor",
+        "cups":             "The standard printing system for Linux",
+        "fastfetch":        "A fast and highly customizable tool for fetching and displaying system information with an ASCII logo.",
+        "featherpad":       "A lightweight and feature-rich Qt-based text editor",
+        "firefox":          "Popular open-source web browser",
+        "flatpak":          "System for sandboxed desktop applications",
+        "gimp":             "GNU Image Manipulation Program, a powerful photo editor",
+        "gufw":             "Graphical User interface for the Uncomplicated Firewall",
+        "libreoffice-fresh":"A powerful and free office suite",
+        "lximage-qt":       "The default image viewer for LXQt",
+        "lxqt":             "The LXQt desktop environment metapackage",
+        "network-manager-applet": "System tray applet for managing network connections",
+        "noto-fonts":       "Google's universal font family for excellent compatibility",
+        "openssh":          "Secure Shell client/server for remote access",
+        "pavucontrol":      "PulseAudio Volume Control, a detailed audio mixer",
+        "pcmanfm-qt":       "The default file manager for LXQt",
+        "pipewire-alsa":    "PipeWire compatibility layer for ALSA applications",
+        "pipewire-pulse":   "PipeWire compatibility layer for PulseAudio applications",
+        "qterminal":        "A lightweight Qt-based terminal emulator",
+        "sddm":             "Simple Desktop Display Manager, a modern login screen for Qt desktops",
+        "system-config-printer": "A graphical utility for printer configuration",
+        "vlc":              "A highly versatile multimedia player"
+    },
+    
+    # A minimal tiling setup for advanced users with Sway (Wayland).
+    "Sway (Tiling WM)": {
+        "alsa-utils":       "Advanced Linux Sound Architecture utilities",
+        "btop":             "Modern and feature-rich resource monitor",
+        "fastfetch":        "A fast and highly customizable tool for fetching and displaying system information with an ASCII logo.",
+        "firefox":          "Popular open-source web browser",
+        "foot":             "A fast, lightweight, and Wayland-native terminal emulator",
+        "gimp":             "GNU Image Manipulation Program, a powerful photo editor",
+        "grim":             "A command-line tool for taking screenshots on Wayland",
+        "ly":               "A TUI (text-based) display manager / login screen",
+        "mako":             "A lightweight notification daemon for Wayland",
+        "network-manager-applet": "System tray applet for managing network connections (for waybar)",
+        "noto-fonts":       "Google's universal font family for excellent compatibility",
+        "openssh":          "Secure Shell client/server for remote access",
+        "pamixer":          "A command-line pulse audio mixer",
+        "pavucontrol":      "PulseAudio Volume Control, a detailed audio mixer",
+        "pipewire-alsa":    "PipeWire compatibility layer for ALSA applications",
+        "pipewire-pulse":   "PipeWire compatibility layer for PulseAudio applications",
+        "qt5-wayland":      "Provides Wayland support for Qt5 applications",
+        "qt6-wayland":      "Provides Wayland support for Qt6 applications",
+        "slurp":            "A command-line tool for selecting a region on Wayland (used with grim)",
+        "sway":             "A tiling Wayland compositor, i3-compatible",
+        "swaybg":           "A utility to display a background image on Sway",
+        "swaylock":         "A screen locker for Sway",
+        "thunar":           "A lightweight GTK file manager",
+        "vlc":              "A highly versatile multimedia player",
+        "waybar":           "A highly customizable Wayland bar for Sway and other compositors",
+        "wl-clipboard":     "Command-line copy/paste utilities for Wayland",
+        "wofi":             "A fast and lightweight application launcher for Wayland"
+    },
+
+    # A minimal tiling setup for advanced users with i3 (X11).
+    "i3 (Tiling WM)": {
+        "alacritty":        "A fast, cross-platform, OpenGL terminal emulator",
+        "alsa-utils":       "Advanced Linux Sound Architecture utilities",
+        "btop":             "Modern and feature-rich resource monitor",
+        "dunst":            "A lightweight and customizable notification daemon for X11",
+        "fastfetch":        "A fast and highly customizable tool for fetching and displaying system information with an ASCII logo.",
+        "feh":              "A fast, lightweight image viewer, often used to set wallpapers",
+        "firefox":          "Popular open-source web browser",
+        "gimp":             "GNU Image Manipulation Program, a powerful photo editor",
+        "i3-gaps":          "A popular fork of the i3 window manager with gaps between windows",
+        "i3lock":           "A simple screen locker for the i3 window manager",
+        "libreoffice-fresh":"A powerful and free office suite",
+        "lightdm":          "Lightweight and cross-desktop display manager",
+        "lightdm-gtk-greeter": "GTK-based login screen theme for LightDM",
+        "maim":             "A utility to take screenshots of your desktop",
+        "network-manager-applet": "System tray applet for managing network connections",
+        "noto-fonts":       "Google's universal font family for excellent compatibility",
+        "openssh":          "Secure Shell client/server for remote access",
+        "pamixer":          "A command-line pulse audio mixer",
+        "pavucontrol":      "PulseAudio Volume Control, a detailed audio mixer",
+        "picom":            "A lightweight compositor for X11 (for transparency and effects)",
+        "pipewire-alsa":    "PipeWire compatibility layer for ALSA applications",
+        "pipewire-pulse":   "PipeWire compatibility layer for PulseAudio applications",
+        "polybar":          "A fast and easy-to-use tool for creating status bars",
+        "rofi":             "A versatile window switcher, application launcher and dmenu replacement",
+        "thunar":           "A lightweight GTK file manager",
+        "vlc":              "A highly versatile multimedia player"
+    },
+    
     # A power-user KDE Plasma profile with development and creative tools.
     "KDE Plasma (Nakildias Profile)": {
         "alsa-utils":       "Advanced Linux Sound Architecture utilities",
@@ -1425,15 +1612,21 @@ systemctl enable NetworkManager.service
 
 """
             enable_dm = ""
-            if selected_de_name == "KDE Plasma" or selected_de_name == "KDE Plasma (NVIDIA, Nakildias Profile)":
-                enable_dm = "sddm"
-            elif selected_de_name == "GNOME":
-                enable_dm = "gdm"
-            elif selected_de_name == "XFCE" or selected_de_name == "MATE" or selected_de_name == "LXQt":
-                enable_dm = "lightdm"
-            
-            if enable_dm:
-                chroot_script_content += f"""
+                # SDDM is used for Qt-based desktops like KDE and LXQt.
+                if selected_de_name in ["KDE Plasma", "KDE Plasma (Nakildias Profile)", "LXQt"]:
+                    enable_dm = "sddm"
+                # GDM is the native display manager for GNOME.
+                elif selected_de_name == "GNOME":
+                    enable_dm = "gdm"
+                # LightDM is a flexible, lightweight, and cross-desktop choice for many GTK-based environments.
+                elif selected_de_name in ["XFCE", "Cinnamon", "MATE", "Budgie", "i3 (Tiling WM)"]:
+                    enable_dm = "lightdm"
+                # Ly is a minimalist, text-based display manager, fitting for a tiling WM like Sway.
+                elif selected_de_name == "Sway (Tiling WM)":
+                    enable_dm = "ly"
+                
+                if enable_dm:
+                    chroot_script_content += f"""
 info "Enabling Display Manager service ({enable_dm})..."
 systemctl enable {enable_dm}.service
 """
