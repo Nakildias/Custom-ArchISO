@@ -920,6 +920,12 @@ class InstallationProgressFrame(BaseFrame):
             # 2. Partition and Format
             self.update_progress("Partitioning and formatting disk...", 15)
 
+            self.update_progress(f"Ensuring all partitions on {target_disk} are unmounted...", tag="info")
+            # Unmount all partitions on the target disk recursively and lazily
+            # '|| true' allows the command to fail without stopping the script
+            # if partitions are not mounted (which is often the case on first run).
+            if not self.run_install_command(f"umount -R {target_disk} || true", "Unmounting existing partitions"): return
+
             try:
                 disk_size_bytes_str = run_command(f"lsblk -b -n -d -o SIZE {target_disk}")
                 disk_size_bytes = int(disk_size_bytes_str)
