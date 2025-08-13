@@ -1,0 +1,2 @@
+1. Profiles directly fetched from github to minimize update rate of the iso for minor package issues
+2. Same as 1. for base packages.
