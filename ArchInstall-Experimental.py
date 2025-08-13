@@ -1,4 +1,3 @@
-
 import tkinter as tk
 from tkinter import ttk, messagebox, scrolledtext
 import subprocess
@@ -766,8 +765,8 @@ class InstallationProgressFrame(BaseFrame):
         self.progress_bar.grid(row=2, column=0, pady=10)
 
         self.log_text = scrolledtext.ScrolledText(main_frame, wrap=tk.WORD, width=90, height=20, font=("Fira Code", 9),
-                                                   bg=DRACULA_CURRENT_LINE, fg=DRACULA_FG,
-                                                   insertbackground=DRACULA_PURPLE, selectbackground=DRACULA_PURPLE, selectforeground=DRACULA_FG)
+                                                 bg=DRACULA_CURRENT_LINE, fg=DRACULA_FG,
+                                                 insertbackground=DRACULA_PURPLE, selectbackground=DRACULA_PURPLE, selectforeground=DRACULA_FG)
         self.log_text.grid(row=3, column=0, pady=10, sticky="nsew")
         self.log_text.tag_config("info", foreground=DRACULA_CYAN)
         self.log_text.tag_config("success", foreground=DRACULA_GREEN)
@@ -912,14 +911,18 @@ class InstallationProgressFrame(BaseFrame):
             # which is needed before pacstrap if multilib packages are requested.
             if install_steam or enable_multilib:
                 self.update_progress("Enabling multilib in live environment pacman.conf...", tag="info")
-                sed_cmd = r"sed -i -E -e 's/^[[:space:]]*#[[:space:]]*\[multilib\]/\[multilib\]/' -e '/^\[multilib\]/{n;s/^[[:space:]]*#[[:space:]]*Include/Include/}' /etc/pacman.conf"
-                if not self.run_install_command(sed_cmd, "Enabling multilib in live pacman.conf"): return
+                # Using a more robust sed command to ensure correct uncommenting
+                sed_cmd_multilib = (
+                    r"sed -i -E "
+                    r"'/^#\s*\[multilib\]/{h;s/^#\s*//p;g;N;s/^#\s*Include/\nInclude/p;d}' "
+                    r"/etc/pacman.conf"
+                )
+                if not self.run_install_command(sed_cmd_multilib, "Enabling multilib in live pacman.conf"): return
                 if not self.run_install_command("pacman -Syy --noconfirm", "Re-synchronizing after multilib enable"): return
 
 
             # 2. Partition and Format
             self.update_progress("Partitioning and formatting disk...", 15)
-
 
             #Those two lines might not be useful
             self.update_progress(f"Ensuring all partitions on {target_disk} are unmounted...", tag="info")
@@ -950,9 +953,9 @@ class InstallationProgressFrame(BaseFrame):
             bios_boot_size_bytes = 1 * 1024 * 1024 if boot_mode == "BIOS" else 0
 
             total_fixed_required_bytes = boot_size_bytes + swap_size_bytes + bios_boot_size_bytes
-            buffer_bytes = 50 * 1024 * 1024 
+            buffer_bytes = 50 * 1024 * 1024 # Add a 50MB buffer for safety
 
-            if disk_size_bytes < (total_fixed_required_bytes + buffer_bytes + (2 * 1024 * 1024 * 1024)):
+            if disk_size_bytes < (total_fixed_required_bytes + buffer_bytes + (2 * 1024 * 1024 * 1024)): # Ensure at least 2GB for root
                 self.update_progress(f"[ERROR] Disk {target_disk} ({disk_size_bytes / (1024**3):.2f} GB) is too small or requested partitions are too large.", tag="error")
                 messagebox.showerror("Disk Size Mismatch", "The selected disk is too small for the requested partition sizes. "
                                      f"Required fixed space: {total_fixed_required_bytes / (1024**3):.2f} GB. "
@@ -1053,10 +1056,85 @@ class InstallationProgressFrame(BaseFrame):
             
             if not self.run_install_command("genfstab -U /mnt >> /mnt/etc/fstab", "Generating fstab"): return
             
-            # Copy the pacman.conf from the live environment to the new system,
-            # ensuring multilib is enabled if chosen.
+            # **REVISED PACMAN.CONF HANDLING**
+            self.update_progress("Configuring pacman.conf in chroot...", tag="info")
+            pacman_conf_content = """
+#
+# /etc/pacman.conf
+#
+# See the pacman.conf(5) manpage for option and repository directives
+
+#
+# GENERAL OPTIONS
+#
+[options]
+HoldPkg         = pacman glibc
+Architecture = auto
+
+# Pacman won't upgrade packages listed in IgnorePkg and members of IgnoreGroup
+#IgnorePkg      =
+#IgnoreGroup =
+
+# NoUpgrade     =
+# NoExtract     =
+
+# Misc options
+Color
+ParallelDownloads = 5
+CheckSpace
+#VerbosePkgLists
+DownloadUser = alpm
+#DisableSandbox
+
+# By default, pacman accepts packages signed by keys that its local keyring
+# trusts (see pacman-key and its man page), as well as unsigned packages.
+SigLevel    = Required DatabaseOptional
+LocalFileSigLevel = Optional
+#RemoteFileSigLevel = Required
+
+# NOTE: You must run `pacman-key --init` before first using pacman; the local
+# keyring can then be populated with the keys of all official Arch Linux
+# packagers with `pacman-key --populate archlinux`.
+
+#
+# REPOSITORIES
+#   - can be defined here or included from another file
+#   - pacman will search repositories in the order defined here
+#   - local/custom mirrors can be added here or in separate files
+#   - repositories listed first will take precedence when packages
+#     have identical names, regardless of version number
+#   - URLs will have $repo replaced by the name of the current repo
+#   - URLs will have $arch replaced by the name of the architecture
+#
+# Repository entries are of the format:
+#       [repo-name]
+#       Server = ServerName
+#       Include = IncludePath
+#
+# The header [repo-name] is crucial - it must be present and
+# uncommented to enable the repo.
+#
+
+[core]
+Include = /etc/pacman.d/mirrorlist
+
+[extra]
+Include = /etc/pacman.d/mirrorlist
+
+"""
+            if install_steam or enable_multilib:
+                pacman_conf_content += """
+[multilib]
+Include = /etc/pacman.d/mirrorlist
+
+"""
+            
+            pacman_conf_path = "/mnt/etc/pacman.conf"
+            with open(pacman_conf_path, "w") as f:
+                f.write(pacman_conf_content)
+            
+            # Ensure the mirrorlist is copied to the new system's chroot
             if not self.run_install_command("cp /etc/pacman.d/mirrorlist /mnt/etc/pacman.d/mirrorlist", "Copying mirrorlist to chroot"): return
-            if not self.run_install_command("cp /etc/pacman.conf /mnt/etc/pacman.conf", "Copying pacman.conf to chroot"): return
             
             chroot_script_content = rf"""#!/bin/bash
 set -e
@@ -1079,9 +1157,9 @@ echo "KEYMAP={keyboard_layout}" > /etc/vconsole.conf
 info "Setting hostname to '{hostname}'..."
 echo "{hostname}" > /etc/hostname
 cat <<EOF_HOSTS > /etc/hosts
-127.0.0.1       localhost
-::1             localhost
-127.0.1.1       {hostname}.localdomain {hostname}
+127.0.0.1         localhost
+::1               localhost
+127.0.1.1         {hostname}.localdomain {hostname}
 EOF_HOSTS
 
 enable_root={str(enable_root).lower()}
@@ -1110,19 +1188,6 @@ if ! grep -q '^%wheel\s\+ALL=(ALL:ALL)\s\+ALL$' /etc/sudoers; then
     fi
 fi
 
-info "Ensuring Pacman configuration inside chroot..."
-sed -i -E -e 's/^[[:space:]]*#[[:space:]]*(ParallelDownloads).*/\\1 = 5/' -e 's/^[[:space:]]*(ParallelDownloads).*/\\1 = 5/' /etc/pacman.conf || true
-if ! grep -q -E "^[[:space:]]*ParallelDownloads" /etc/pacman.conf; then echo "ParallelDownloads = 5" >> /etc/pacman.conf; fi
-sed -i -E -e 's/^[[:space:]]*#[[:space:]]*(Color)/\\1/' /etc/pacman.conf || true
-if ! grep -q -E "^[[:space:]]*Color" /etc/pacman.conf; then echo "Color" >> /etc/pacman.conf; fi
-"""
-            # This multilib check is for the CHROOTED environment's pacman.conf
-            if install_steam or enable_multilib:
-                chroot_script_content += rf"""
-info "Ensuring Multilib repository is enabled in chroot pacman.conf (post-install for new system)..."
-sed -i -e '/^#[[:space:]]*\[multilib\]/s/^#//' -e '/^\[multilib\]/{{n;s/^[[:space:]]*#[[:space:]]*Include/Include/}}' /etc/pacman.conf
-"""
-            chroot_script_content += f"""
 info "Enabling NetworkManager service..."
 systemctl enable NetworkManager.service
 
@@ -1203,7 +1268,7 @@ if [ "$enable_root" = "true" ]; then
   if ! sh -c 'export RUNZSH=no CHSH=no; sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended'; then
     echo "[WARN] curl failed for Oh My Zsh (root), trying wget..."
     if ! sh -c 'export RUNZSH=no CHSH=no; sh -c "$(wget -qO- https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended'; then
-        echo "[ERROR] Failed to download Oh My Zsh installer for root."
+      echo "[ERROR] Failed to download Oh My Zsh installer for root."
     fi
   fi
   sed -i 's/^ZSH_THEME=.*/ZSH_THEME="robbyrussell"/' /root/.zshrc || true
@@ -1261,9 +1326,9 @@ class SummaryFrame(BaseFrame):
 
         ttk.Label(main_frame, text="Installation Details:", style="Highlight.TLabel").grid(row=4, column=0, sticky="w", pady=(10,0))
         details_text = tk.Text(main_frame, wrap=tk.WORD, width=60, height=10, state="disabled",
-                                bg=DRACULA_CURRENT_LINE, fg=DRACULA_FG,
-                                insertbackground=DRACULA_PURPLE, selectbackground=DRACULA_PURPLE, selectforeground=DRACULA_FG,
-                                borderwidth=1, relief="solid", font=("Fira Code", 9))
+                                 bg=DRACULA_CURRENT_LINE, fg=DRACULA_FG,
+                                 insertbackground=DRACULA_PURPLE, selectbackground=DRACULA_PURPLE, selectforeground=DRACULA_FG,
+                                 borderwidth=1, relief="solid", font=("Fira Code", 9))
         details_text.grid(row=5, column=0, pady=5, sticky="nsew")
         self.details_text = details_text
 
