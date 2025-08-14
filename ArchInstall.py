@@ -499,6 +499,7 @@ class ArchInstallGUI(tk.Tk):
             # New variable to hold the final, confirmed disk name
             "final_target_disk": tk.StringVar(value=""),
             "use_reflector": tk.BooleanVar(value=True),
+            "zsh_theme": tk.StringVar(value="agnoster"),
         }
 
         self.current_frame = None
@@ -1112,8 +1113,45 @@ class PackageSelectionFrame(BaseFrame):
         self.multilib_check = ttk.Checkbutton(self.options_frame, text="Enable Multilib Repository (even if Steam not selected)", variable=self.controller.install_vars["enable_multilib"])
         self.multilib_check.grid(row=2, column=0, sticky="w", padx=10)
         
-        self.oh_my_zsh_check = ttk.Checkbutton(self.options_frame, text="Install Oh My Zsh", variable=self.controller.install_vars["install_oh_my_zsh"])
+        # Update the Oh My Zsh checkbox to have a command
+        self.oh_my_zsh_check = ttk.Checkbutton(self.options_frame, text="Install Oh My Zsh",
+                                               variable=self.controller.install_vars["install_oh_my_zsh"],
+                                               command=self.toggle_zsh_theme_selector)
         self.oh_my_zsh_check.grid(row=2, column=1, sticky="w", padx=10)
+
+        # --- Create a new frame for the Zsh options ---
+        self.zsh_options_frame = ttk.Frame(self.options_frame)
+        self.zsh_options_frame.grid(row=3, column=0, columnspan=3, sticky='w', padx=20) # This frame will be shown/hidden
+
+        # Add theme selector dropdown
+        ttk.Label(self.zsh_options_frame, text="Zsh Theme:").grid(row=0, column=0, sticky="w", pady=2)
+        zsh_themes = [
+            "agnoster", "robbyrussell", "amuse", "avit", "bira", "bureau",
+            "candy", "cloud", "crcandy", "cypher", "dallas", "fino-time", "fishy",
+            "fox", "gallois", "half-life", "jnrowe", "jonathan", "lambda",
+            "minimal", "murilasso", "norm", "obraun", "pygmalion", "refined",
+            "sorin", "steeef", "sunrise", "ys"
+        ]
+        self.zsh_theme_combobox = ttk.Combobox(self.zsh_options_frame,
+                                               textvariable=self.controller.install_vars["zsh_theme"],
+                                               values=zsh_themes, state="readonly", width=25)
+        self.zsh_theme_combobox.grid(row=0, column=1, sticky="w", padx=5)
+
+        # --- Add label and button for theme previews ---
+        def print_themes_link():
+            link = "https://github.com/ohmyzsh/ohmyzsh/wiki/themes"
+            print("\n" + "="*40)
+            print("Oh My Zsh Themes Preview Link:")
+            print(link)
+            print("="*40 + "\n")
+            messagebox.showinfo("Link Printed", f"The themes link has been printed to the terminal for easy access:\n\n{link}")
+
+        ttk.Label(self.zsh_options_frame, text="To see theme previews:", style="Subtitle.TLabel").grid(row=1, column=0, sticky="w", pady=(5,0))
+        self.themes_link_button = ttk.Button(self.zsh_options_frame, text="Print Link to Terminal", command=print_themes_link)
+        self.themes_link_button.grid(row=1, column=1, sticky="w", padx=5, pady=(5,0))
+
+        # Call the toggle function once to set the initial state
+        self.toggle_zsh_theme_selector()
         
         ttk.Label(self.options_frame, text="Installation Options:", style="Highlight.TLabel").grid(row=3, column=0, sticky="w", columnspan=2, pady=(15,0))
         self.log_file_check = ttk.Checkbutton(self.options_frame, text="Save installation log to ./logs_archinstall.txt",
@@ -1129,7 +1167,14 @@ class PackageSelectionFrame(BaseFrame):
         selected_profile = self.controller.get_var("selected_de_name")
         self.controller.set_var("package_list", " ".join(self.package_profiles[selected_profile]))
         return True
-
+        
+    def toggle_zsh_theme_selector(self):
+        """Shows or hides the Zsh theme dropdown based on the checkbox state."""
+        if self.controller.get_var("install_oh_my_zsh"):
+            self.zsh_options_frame.grid()
+        else:
+            self.zsh_options_frame.grid_remove()
+            
     def open_customize_window(self):
         profile_name = self.controller.get_var("selected_de_name")
         package_list_str = " ".join(self.package_profiles[profile_name])
@@ -1296,6 +1341,7 @@ class InstallationProgressFrame(BaseFrame):
             city = self.controller.get_var("city")
             keyboard_layout = self.controller.get_var("keyboard_layout")
             use_reflector = self.controller.get_var("use_reflector")
+            zsh_theme = self.controller.get_var("zsh_theme")
 
             de_pkgs = package_list_str.split()
             optional_pkgs = []
@@ -1592,13 +1638,12 @@ install_for_user() {{
     
     # Set the Zsh theme if the .zshrc file exists
     if [ -f "$user_home/.zshrc" ]; then
-        # FIX IS HERE: Doubled curly braces to escape the f-string formatting
-        sed -i 's/^ZSH_THEME=.*/ZSH_THEME="{{theme}}"/g' "$user_home/.zshrc"
+        sed -i "s/^ZSH_THEME=.*/ZSH_THEME=\\"$theme\\"/g" "$user_home/.zshrc"
     fi
 }}
 
 # Install for the created user
-install_for_user "{username}" "agnoster"
+install_for_user "{username}" "{zsh_theme}"
 
 # Install for root if enabled
 if [ "{str(enable_root).lower()}" = "true" ]; then
