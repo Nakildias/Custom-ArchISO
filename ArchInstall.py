@@ -498,6 +498,7 @@ class ArchInstallGUI(tk.Tk):
             "internet_status": tk.StringVar(value=""),
             # New variable to hold the final, confirmed disk name
             "final_target_disk": tk.StringVar(value=""),
+            "use_reflector": tk.BooleanVar(value=True),
         }
 
         self.current_frame = None
@@ -1119,6 +1120,11 @@ class PackageSelectionFrame(BaseFrame):
                                               variable=self.controller.install_vars["log_to_file"])
         self.log_file_check.grid(row=4, column=0, sticky="w", columnspan=2, padx=10)
 
+        self.reflector_check = ttk.Checkbutton(self.options_frame, text="Use Reflector to find fastest mirrors (Recommended)",
+                                               variable=self.controller.install_vars["use_reflector"])
+        self.reflector_check.grid(row=5, column=0, sticky="w", columnspan=2, padx=10)
+
+
     def validate_and_next(self):
         selected_profile = self.controller.get_var("selected_de_name")
         self.controller.set_var("package_list", " ".join(self.package_profiles[selected_profile]))
@@ -1289,6 +1295,7 @@ class InstallationProgressFrame(BaseFrame):
             region = self.controller.get_var("region")
             city = self.controller.get_var("city")
             keyboard_layout = self.controller.get_var("keyboard_layout")
+            use_reflector = self.controller.get_var("use_reflector")
 
             de_pkgs = package_list_str.split()
             optional_pkgs = []
@@ -1325,10 +1332,18 @@ class InstallationProgressFrame(BaseFrame):
 
             base_pkgs_list = list(base_pkgs.keys())
             all_pkgs = base_pkgs_list + de_pkgs + optional_pkgs
+
             
             # OPTIMIZATION 1: Faster Mirror Setup
-            self.update_progress("Setting up fast Pacman mirrors...", 5)
-            if not self.run_install_command("cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup && reflector --verbose --protocol https --country 'Canada' --latest 20 --sort rate --save /etc/pacman.d/mirrorlist", "Configuring mirrors"): return
+            self.update_progress("Configuring Pacman mirrors...", 5)
+            # Always back up the original mirrorlist, just in case
+            if not self.run_install_command("cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup", "Backing up original mirrorlist"): return
+
+            if use_reflector:
+                self.update_progress("Using Reflector to find fastest mirrors...", tag="info")
+                if not self.run_install_command("reflector --verbose --protocol https --country 'Canada' --latest 20 --sort rate --save /etc/pacman.d/mirrorlist", "Configuring mirrors with Reflector"): return
+            else:
+                self.update_progress("Skipping Reflector. Using existing mirrorlist.", tag="warn")
             
             # PACMAN.CONF LIVE ENVIRONMENT OVERWRITE
             self.update_progress("Overwriting live environment pacman.conf to enable repositories...", tag="info")
