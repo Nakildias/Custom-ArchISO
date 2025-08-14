@@ -1153,7 +1153,7 @@ class PackageSelectionFrame(BaseFrame):
         # Call the toggle function once to set the initial state
         self.toggle_zsh_theme_selector()
         
-        ttk.Label(self.options_frame, text="Installation Options:", style="Highlight.TLabel").grid(row=3, column=0, sticky="w", columnspan=2, pady=(40,0))
+        ttk.Label(self.options_frame, text="Installation Options:", style="Highlight.TLabel").grid(row=3, column=0, sticky="w", columnspan=2, pady=(90,0))
         self.log_file_check = ttk.Checkbutton(self.options_frame, text="Save installation log to ./logs_archinstall.txt",
                                               variable=self.controller.install_vars["log_to_file"])
         self.log_file_check.grid(row=4, column=0, sticky="w", columnspan=2, padx=10)
