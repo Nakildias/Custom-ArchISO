@@ -692,9 +692,8 @@ class WelcomeFrame(BaseFrame):
 
         # Perform the internet check
         self.check_internet_connection()
-
     def check_internet_connection(self):
-        """Checks for internet, updates GUI, and enables/disables the Next button."""
+        """Checks internet by pinging multiple sites and updates the GUI."""
         # Update UI to show that a check is in progress
         self.controller.set_var("internet_status", "Checking...")
         self.internet_status_label.config(style="Info.TLabel")
@@ -702,23 +701,42 @@ class WelcomeFrame(BaseFrame):
         self.retry_button.grid_remove()
         self.update_idletasks() # Force the UI to refresh immediately
 
-        try:
-            # Use the 'requests' library (already imported) for a reliable HTTP check.
-            # A timeout prevents the UI from freezing if the network is very slow.
-            requests.get("https://archlinux.org", timeout=5)
-            
-            # --- On Success ---
+        # Run the actual check in a separate thread to keep the GUI responsive
+        threading.Thread(target=self._perform_check).start()
+
+    def _perform_check(self):
+        """The actual network checking logic to be run in a thread."""
+        hosts_to_check = [
+            "https://google.com",
+            "https://archlinux.org",
+            "https://wiki.archlinux.org",
+            "https://wikipedia.org",
+            "https://github.com"
+        ]
+        success_count = 0
+        
+        for host in hosts_to_check:
+            try:
+                # Use a shorter timeout for each individual request
+                requests.get(host, timeout=3)
+                success_count += 1
+            except requests.RequestException:
+                # If a single host fails, just continue to the next one
+                print(f"Connection to {host} failed.")
+                pass
+
+        # --- Update GUI based on the results ---
+        # Check if at least 50% of the hosts were reachable
+        if success_count >= len(hosts_to_check) / 2:
             self.controller.set_var("internet_status", "Available")
             self.internet_status_label.config(style="Success.TLabel")
-            self.next_button.config(state="normal") # Enable the "Next" button
-            self.retry_button.grid_remove() # Keep the "Try Again" button hidden
-
-        except requests.RequestException:
-            # --- On Failure ---
+            self.next_button.config(state="normal")
+            self.retry_button.grid_remove()
+        else:
             self.controller.set_var("internet_status", "Unavailable")
             self.internet_status_label.config(style="Warning.TLabel")
-            self.next_button.config(state="disabled") # Keep "Next" disabled
-            self.retry_button.grid() # Show the "Try Again" button
+            self.next_button.config(state="disabled")
+            self.retry_button.grid()
 
 # --- Step 2: Disk Selection Frame ---
 class DiskSelectionFrame(BaseFrame):
