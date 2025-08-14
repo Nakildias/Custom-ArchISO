@@ -668,27 +668,57 @@ class WelcomeFrame(BaseFrame):
         ttk.Label(status_frame, text="Boot Mode:").grid(row=1, column=0, sticky="w", padx=10)
         ttk.Label(status_frame, textvariable=self.controller.install_vars["boot_mode"], style="Info.TLabel").grid(row=1, column=0, sticky="e", padx=10)
 
+        status_frame.grid_columnconfigure(1, weight=0) 
+
+        # Internet status labels
         ttk.Label(status_frame, text="Internet Connection:").grid(row=2, column=0, sticky="w", padx=10)
-        ttk.Label(status_frame, textvariable=self.controller.install_vars["internet_status"], style="Info.TLabel").grid(row=2, column=0, sticky="e", padx=10)
+        self.internet_status_label = ttk.Label(status_frame, textvariable=self.controller.install_vars["internet_status"])
+        self.internet_status_label.grid(row=2, column=0, sticky="e", padx=10)
+
+        # Try Again button
+        self.retry_button = ttk.Button(status_frame, text="Try Again", command=self.check_internet_connection)
+        self.retry_button.grid(row=2, column=1, padx=5, sticky="w")
+        self.retry_button.grid_remove() # Hide it until it's needed
 
         self.back_button.grid_remove()
         self.exit_button.grid(row=0, column=3, sticky="e", padx=5)
         self.next_button.grid(row=0, column=4, sticky="e", padx=5)
 
     def on_show(self):
-        self.check_prerequisites()
-
-    def check_prerequisites(self):
+        """Called every time the frame is shown."""
+        # Set boot mode
         boot_mode = "UEFI" if os.path.isdir("/sys/firmware/efi/efivars") else "BIOS"
         self.controller.set_var("boot_mode", boot_mode)
 
+        # Perform the internet check
+        self.check_internet_connection()
+
+    def check_internet_connection(self):
+        """Checks for internet, updates GUI, and enables/disables the Next button."""
+        # Update UI to show that a check is in progress
+        self.controller.set_var("internet_status", "Checking...")
+        self.internet_status_label.config(style="Info.TLabel")
+        self.next_button.config(state="disabled") # Disable "Next" during the check
+        self.retry_button.grid_remove()
+        self.update_idletasks() # Force the UI to refresh immediately
+
         try:
-            run_command("ping -c 1 archlinux.org", check=True, capture_output=False)
+            # Use the 'requests' library (already imported) for a reliable HTTP check.
+            # A timeout prevents the UI from freezing if the network is very slow.
+            requests.get("https://archlinux.org", timeout=5)
+            
+            # --- On Success ---
             self.controller.set_var("internet_status", "Available")
-        except Exception:
+            self.internet_status_label.config(style="Success.TLabel")
+            self.next_button.config(state="normal") # Enable the "Next" button
+            self.retry_button.grid_remove() # Keep the "Try Again" button hidden
+
+        except requests.RequestException:
+            # --- On Failure ---
             self.controller.set_var("internet_status", "Unavailable")
-            messagebox.showerror("Prerequisite Check Failed", "No internet connection detected. Please connect to the internet and restart the script.")
-            self.controller.exit_installer()
+            self.internet_status_label.config(style="Warning.TLabel")
+            self.next_button.config(state="disabled") # Keep "Next" disabled
+            self.retry_button.grid() # Show the "Try Again" button
 
 # --- Step 2: Disk Selection Frame ---
 class DiskSelectionFrame(BaseFrame):
