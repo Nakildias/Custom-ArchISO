@@ -1330,6 +1330,10 @@ class InstallationProgressFrame(BaseFrame):
             if microcode_package:
                 base_pkgs[microcode_package] = "Processor microcode for CPU stability and security."
 
+            # If Oh My Zsh is being installed, add the required fonts for themes like agnoster.
+            if install_oh_my_zsh:
+                base_pkgs["powerline-fonts"] = "Fonts for powerline-like shells and themes (e.g., agnoster)."
+            
             base_pkgs_list = list(base_pkgs.keys())
             all_pkgs = base_pkgs_list + de_pkgs + optional_pkgs
 
