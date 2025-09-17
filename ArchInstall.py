@@ -886,20 +886,18 @@ class PartitioningFrame(BaseFrame):
             messagebox.showerror("Invalid Input", "Swap size must be a number followed by M or G (e.g., 4G, 512M) or left blank.")
             return False
         
+        # The final disk is now confirmed in the next step. We only set the partition prefix here.
+        # This also removes the incorrect/unnecessary partition number assignments.
         target_disk = self.controller.get_var("target_disk")
-        # Set the final_target_disk variable here.
-        self.controller.set_var("final_target_disk", target_disk)
+        if not target_disk:
+            messagebox.showerror("Disk Error", "Target disk not set. Please go back to Disk Selection.")
+            return False
 
         if "nvme" in target_disk or "mmcblk" in target_disk:
             partition_prefix = f"{target_disk}p"
         else:
             partition_prefix = target_disk
         self.controller.set_var("partition_prefix", partition_prefix)
-
-        self.controller.set_var("root_partition", f"{partition_prefix}1")
-        self.controller.set_var("boot_partition", f"{partition_prefix}2")
-        self.controller.set_var("swap_partition", f"{partition_prefix}3" if swap_size else "")
-        self.controller.set_var("bios_boot_partition", f"{partition_prefix}4" if self.controller.get_var("boot_mode") == "BIOS" else "")
 
         return True
 
@@ -1166,6 +1164,15 @@ class PackageSelectionFrame(BaseFrame):
     def validate_and_next(self):
         selected_profile = self.controller.get_var("selected_de_name")
         self.controller.set_var("package_list", " ".join(self.package_profiles[selected_profile]))
+
+        # At the final step before installation, confirm the target disk and lock it in.
+        # This prevents the state from being lost if the user navigates back and forth.
+        target_disk = self.controller.get_var("target_disk")
+        if not target_disk:
+            messagebox.showerror("Disk Not Selected", "No installation disk is selected. Please go back and choose a disk.")
+            return False
+            
+        self.controller.set_var("final_target_disk", target_disk)
         return True
         
     def toggle_zsh_theme_selector(self):
