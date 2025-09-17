@@ -768,6 +768,9 @@ class DiskSelectionFrame(BaseFrame):
         self.next_button.config(state="disabled")
 
     def on_show(self):
+        # Unbind the event to prevent it from firing while we manipulate the list
+        self.disk_listbox.unbind("<<ListboxSelect>>")
+
         self.populate_disks()
         
         selected_disk_name = self.controller.get_var("target_disk")
@@ -780,6 +783,9 @@ class DiskSelectionFrame(BaseFrame):
                     break
         else:
             self.next_button.config(state="disabled")
+
+        # Re-bind the event so it works for user interactions
+        self.disk_listbox.bind("<<ListboxSelect>>", self.on_disk_select)
 
     def populate_disks(self):
         self.disk_listbox.delete(0, tk.END)
@@ -814,7 +820,11 @@ class DiskSelectionFrame(BaseFrame):
                 self.controller.set_var("target_disk", disk_name)
                 self.next_button.config(state="normal")
             else:
+                # Unbind, clear, then rebind to prevent a feedback loop from the clear operation
+                self.disk_listbox.unbind("<<ListboxSelect>>")
                 self.disk_listbox.selection_clear(0, tk.END)
+                self.disk_listbox.bind("<<ListboxSelect>>", self.on_disk_select)
+                
                 self.controller.set_var("target_disk", "")
                 self.next_button.config(state="disabled")
             
@@ -822,13 +832,6 @@ class DiskSelectionFrame(BaseFrame):
         else:
             self.controller.set_var("target_disk", "")
             self.next_button.config(state="disabled")
-
-    def validate_and_next(self):
-        if self.controller.get_var("target_disk"):
-            return True
-        else:
-            messagebox.showerror("Validation Error", "Please select a disk to continue.")
-            return False
 
 # --- Step 3: Partitioning Frame ---
 class PartitioningFrame(BaseFrame):
