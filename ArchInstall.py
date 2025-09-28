@@ -552,8 +552,9 @@ class ArchInstallGUI(tk.Tk):
             print(f"An unexpected error occurred during update check: {e}")
 
     def create_frames(self):
-        for F in (WelcomeFrame, DiskSelectionFrame, PartitioningFrame,
-                  LocaleConfigFrame, UserConfigFrame, PackageSelectionFrame,
+        # --- MODIFIED: The order of frames is changed to move disk selection to the end ---
+        for F in (WelcomeFrame, PartitioningFrame, LocaleConfigFrame,
+                  UserConfigFrame, PackageSelectionFrame, DiskSelectionFrame,
                   InstallationProgressFrame, SummaryFrame):
             frame = F(self, self)
             self.frames[F] = frame
@@ -584,9 +585,8 @@ class ArchInstallGUI(tk.Tk):
             if not current_frame.validate_and_next():
                 return
 
+        # --- MODIFIED: New installer flow logic ---
         if current_frame == self.frames[WelcomeFrame]:
-            self.show_frame(DiskSelectionFrame)
-        elif current_frame == self.frames[DiskSelectionFrame]:
             self.show_frame(PartitioningFrame)
         elif current_frame == self.frames[PartitioningFrame]:
             self.show_frame(LocaleConfigFrame)
@@ -595,24 +595,30 @@ class ArchInstallGUI(tk.Tk):
         elif current_frame == self.frames[UserConfigFrame]:
             self.show_frame(PackageSelectionFrame)
         elif current_frame == self.frames[PackageSelectionFrame]:
-            self.show_frame(InstallationProgressFrame)
-            threading.Thread(target=self.current_frame.start_installation).start()
+            self.show_frame(DiskSelectionFrame)
+        elif current_frame == self.frames[DiskSelectionFrame]:
+            # --- MODIFIED: Added final confirmation dialog before installation ---
+            if messagebox.askyesno("Confirm Installation", "Are you sure you are ready with the installation?"):
+                self.show_frame(InstallationProgressFrame)
+                threading.Thread(target=self.current_frame.start_installation).start()
         elif current_frame == self.frames[InstallationProgressFrame]:
             self.show_frame(SummaryFrame)
 
     def prev_step(self):
-        if self.current_frame == self.frames[DiskSelectionFrame]:
+        # --- MODIFIED: New logic for the "Back" button to match the new flow ---
+        if self.current_frame == self.frames[PartitioningFrame]:
             self.show_frame(WelcomeFrame)
-        elif self.current_frame == self.frames[PartitioningFrame]:
-            self.show_frame(DiskSelectionFrame)
         elif self.current_frame == self.frames[LocaleConfigFrame]:
             self.show_frame(PartitioningFrame)
         elif self.current_frame == self.frames[UserConfigFrame]:
             self.show_frame(LocaleConfigFrame)
         elif self.current_frame == self.frames[PackageSelectionFrame]:
             self.show_frame(UserConfigFrame)
-        elif self.current_frame == self.frames[InstallationProgressFrame]:
+        elif self.current_frame == self.frames[DiskSelectionFrame]:
             self.show_frame(PackageSelectionFrame)
+        elif self.current_frame == self.frames[InstallationProgressFrame]:
+            # Back button is disabled here, but this is for logical consistency
+            self.show_frame(DiskSelectionFrame)
 
     def exit_installer(self):
         if messagebox.askyesno("Exit Installer", "Are you sure you want to exit?"):
@@ -742,7 +748,7 @@ class WelcomeFrame(BaseFrame):
             self.next_button.config(state="disabled")
             self.retry_button.grid()
 
-# --- Step 2: Disk Selection Frame ---
+# --- Step 2 (New Position): Disk Selection Frame ---
 class DiskSelectionFrame(BaseFrame):
     def __init__(self, parent, controller):
         super().__init__(parent, controller)
@@ -752,12 +758,12 @@ class DiskSelectionFrame(BaseFrame):
         self.main_frame.grid_columnconfigure(0, weight=1)
 
         ttk.Label(self.main_frame, text="Select Installation Disk", style="Title.TLabel").grid(row=0, column=0, pady=10)
-        ttk.Label(self.main_frame, text="Choose the disk you want yo install Arch Linux on, all data on the selected disk will be wiped.", wraplength=600, justify="center").grid(row=1, column=0, pady=5)
+        ttk.Label(self.main_frame, text="Choose the disk you want to install Arch Linux on. All data on the selected disk will be wiped.", wraplength=600, justify="center").grid(row=1, column=0, pady=5)
 
         self.disk_listbox = tk.Listbox(self.main_frame, height=10, width=60, font=("Fira Code", 10),
-                                        bg=DRACULA_CURRENT_LINE, fg=DRACULA_FG,
-                                        selectbackground=DRACULA_PURPLE, selectforeground=DRACULA_FG,
-                                        borderwidth=1, relief="solid")
+                                       bg=DRACULA_CURRENT_LINE, fg=DRACULA_FG,
+                                       selectbackground=DRACULA_PURPLE, selectforeground=DRACULA_FG,
+                                       borderwidth=1, relief="solid")
         self.disk_listbox.grid(row=2, column=0, pady=10, padx=20, sticky="nsew")
         self.disk_listbox.bind("<<ListboxSelect>>", self.on_disk_select)
 
@@ -835,7 +841,27 @@ class DiskSelectionFrame(BaseFrame):
             self.controller.set_var("target_disk", "")
             self.next_button.config(state="disabled")
 
-# --- Step 3: Partitioning Frame ---
+    # --- ADDED: Validation logic for the final step before installation ---
+    def validate_and_next(self):
+        target_disk = self.controller.get_var("target_disk")
+        if not target_disk:
+            messagebox.showerror("Disk Not Selected", "No installation disk is selected. Please choose a disk to continue.")
+            return False
+
+        # This is now the final confirmation step before installation.
+        # Lock in the disk choice.
+        self.controller.set_var("final_target_disk", target_disk)
+
+        # Calculate the partition prefix, which is needed for the installation script.
+        if "nvme" in target_disk or "mmcblk" in target_disk:
+            partition_prefix = f"{target_disk}p"
+        else:
+            partition_prefix = target_disk
+        self.controller.set_var("partition_prefix", partition_prefix)
+
+        return True
+
+# --- Step 3 (New Position): Partitioning Frame ---
 class PartitioningFrame(BaseFrame):
     def __init__(self, parent, controller):
         super().__init__(parent, controller)
@@ -891,22 +917,10 @@ class PartitioningFrame(BaseFrame):
             messagebox.showerror("Invalid Input", "Swap size must be a number followed by M or G (e.g., 4G, 512M) or left blank.")
             return False
         
-        # The final disk is now confirmed in the next step. We only set the partition prefix here.
-        # This also removes the incorrect/unnecessary partition number assignments.
-        target_disk = self.controller.get_var("target_disk")
-        if not target_disk:
-            messagebox.showerror("Disk Error", "Target disk not set. Please go back to Disk Selection.")
-            return False
-
-        if "nvme" in target_disk or "mmcblk" in target_disk:
-            partition_prefix = f"{target_disk}p"
-        else:
-            partition_prefix = target_disk
-        self.controller.set_var("partition_prefix", partition_prefix)
-
+        # --- MODIFIED: Removed disk-dependent logic as disk is now selected later ---
         return True
 
-# --- Step 3.5: Locale Configuration Frame ---
+# --- Step 4 (New Position): Locale Configuration Frame ---
 class LocaleConfigFrame(BaseFrame):
     def __init__(self, parent, controller):
         super().__init__(parent, controller)
@@ -979,7 +993,7 @@ class LocaleConfigFrame(BaseFrame):
     def validate_and_next(self):
         return True
 
-# --- Step 4: User and Hostname Configuration Frame ---
+# --- Step 5 (New Position): User and Hostname Configuration Frame ---
 class UserConfigFrame(BaseFrame):
     def __init__(self, parent, controller):
         super().__init__(parent, controller)
@@ -1068,7 +1082,7 @@ class UserConfigFrame(BaseFrame):
         self.controller.set_var("user_password", user_pass)
         return True
 
-# --- Step 5: Package Selection Frame ---
+# --- Step 6 (New Position): Package Selection Frame ---
 class PackageSelectionFrame(BaseFrame):
     def __init__(self, parent, controller):
         super().__init__(parent, controller)
@@ -1167,17 +1181,9 @@ class PackageSelectionFrame(BaseFrame):
 
 
     def validate_and_next(self):
+        # --- MODIFIED: Removed disk selection logic ---
         selected_profile = self.controller.get_var("selected_de_name")
         self.controller.set_var("package_list", " ".join(self.package_profiles[selected_profile]))
-
-        # At the final step before installation, confirm the target disk and lock it in.
-        # This prevents the state from being lost if the user navigates back and forth.
-        target_disk = self.controller.get_var("target_disk")
-        if not target_disk:
-            messagebox.showerror("Disk Not Selected", "No installation disk is selected. Please go back and choose a disk.")
-            return False
-            
-        self.controller.set_var("final_target_disk", target_disk)
         return True
         
     def toggle_zsh_theme_selector(self):
@@ -1189,7 +1195,12 @@ class PackageSelectionFrame(BaseFrame):
             
     def open_customize_window(self):
         profile_name = self.controller.get_var("selected_de_name")
-        package_list_str = " ".join(self.package_profiles[profile_name])
+        # Handle both dict (default) and list (customized) profiles
+        current_packages = self.package_profiles[profile_name]
+        if isinstance(current_packages, dict):
+            package_list_str = " ".join(current_packages.keys())
+        else:
+            package_list_str = " ".join(current_packages)
 
         custom_window = tk.Toplevel(self)
         custom_window.title(f"Customize {profile_name}")
@@ -1220,7 +1231,7 @@ class PackageSelectionFrame(BaseFrame):
         ttk.Button(button_frame, text="Save", command=save_packages).pack(side="right", padx=5)
         ttk.Button(button_frame, text="Cancel", command=close_window).pack(side="right", padx=5)
 
-# --- Step 6: Installation Progress Frame ---
+# --- Step 7 (New Position): Installation Progress Frame ---
 class InstallationProgressFrame(BaseFrame):
     def __init__(self, parent, controller):
         super().__init__(parent, controller)
@@ -1238,8 +1249,8 @@ class InstallationProgressFrame(BaseFrame):
         self.progress_bar.grid(row=2, column=0, pady=10)
 
         self.log_text = scrolledtext.ScrolledText(main_frame, wrap=tk.WORD, width=90, height=20, font=("Fira Code", 9),
-                                                 bg=DRACULA_CURRENT_LINE, fg=DRACULA_FG,
-                                                 insertbackground=DRACULA_PURPLE, selectbackground=DRACULA_PURPLE, selectforeground=DRACULA_FG)
+                                                  bg=DRACULA_CURRENT_LINE, fg=DRACULA_FG,
+                                                  insertbackground=DRACULA_PURPLE, selectbackground=DRACULA_PURPLE, selectforeground=DRACULA_FG)
         self.log_text.grid(row=3, column=0, pady=10, sticky="nsew")
         self.log_text.tag_config("info", foreground=DRACULA_CYAN)
         self.log_text.tag_config("success", foreground=DRACULA_GREEN)
@@ -1324,7 +1335,7 @@ class InstallationProgressFrame(BaseFrame):
         self.log_variables()
 
         try:
-            # Use the new, reliably set variable here
+            # Use the reliably set variable here
             target_disk = self.controller.get_var("final_target_disk")
             if not target_disk:
                 self.update_progress("[ERROR] No target disk was selected. Aborting installation.", tag="error")
@@ -1695,7 +1706,7 @@ fi
             self.close_log_file()
 
 
-# --- Step 7: Summary Frame ---
+# --- Step 8 (New Position): Summary Frame ---
 class SummaryFrame(BaseFrame):
     def __init__(self, parent, controller):
         super().__init__(parent, controller)
@@ -1712,9 +1723,9 @@ class SummaryFrame(BaseFrame):
 
         ttk.Label(main_frame, text="Installation Details:", style="Highlight.TLabel").grid(row=4, column=0, sticky="w", pady=(10,0))
         details_text = tk.Text(main_frame, wrap=tk.WORD, width=60, height=10, state="disabled",
-                                 bg=DRACULA_CURRENT_LINE, fg=DRACULA_FG,
-                                 insertbackground=DRACULA_PURPLE, selectbackground=DRACULA_PURPLE, selectforeground=DRACULA_FG,
-                                 borderwidth=1, relief="solid", font=("Fira Code", 9))
+                               bg=DRACULA_CURRENT_LINE, fg=DRACULA_FG,
+                               insertbackground=DRACULA_PURPLE, selectbackground=DRACULA_PURPLE, selectforeground=DRACULA_FG,
+                               borderwidth=1, relief="solid", font=("Fira Code", 9))
         details_text.grid(row=5, column=0, pady=5, sticky="nsew")
         self.details_text = details_text
 
